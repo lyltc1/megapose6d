@@ -71,8 +71,15 @@ We support running `megapose` either in a [`conda`](#conda-installation) environ
 We will create a `conda` environment named `megapose` that contains all the dependencies, then install the `megapose` python package inside.
 
 ```
-conda env create -f conda/environment_full.yaml
+conda create -n megapose python=3.9
 conda activate megapose
+pip install torch==2.1.1 torchvision==0.16.1 --index-url https://download.pytorch.org/whl/cu118
+conda config --add channels conda-forge
+conda config --add channels pytorch
+conda config --add channels anaconda
+conda config --add channels defaults
+conda install -y pip wget python-wget joblib ipython ipykernel jupyterlab notebook nb_conda_kernels  pinocchio rclone pillow ipywidgets selenium geckodriver firefox
+pip install jupyter_contrib_nbextensions meshcat selenium omegaconf simplejson line_profiler opencv-python torchnet tqdm lxml transforms3d panda3d joblib xarray pandas matplotlib bokeh plyfile trimesh ipdb panda3d-gltf colorama pyyaml ipykernel scipy pypng h5py seaborn kornia pyarrow dt_apriltags open3d structlog imageio progressbar pyyaml psutil webdataset opencv-contrib-python roma torchgeometry  
 pip install -e .
 ```
 
