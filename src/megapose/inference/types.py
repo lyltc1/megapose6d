@@ -182,7 +182,7 @@ class ObservationTensor:
         """
 
         assert rgb.dtype == np.uint8
-        rgb_tensor = torch.as_tensor(rgb).float() / 255
+        rgb_tensor = torch.as_tensor(rgb, dtype=torch.uint8).float() / 255
 
         # convert it to [C,H,W]
         if rgb_tensor.shape[-1] == 3:

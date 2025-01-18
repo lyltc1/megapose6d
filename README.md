@@ -78,9 +78,17 @@ conda config --add channels conda-forge
 conda config --add channels pytorch
 conda config --add channels anaconda
 conda config --add channels defaults
+conda install -c conda-forge firefox geckodriver
 conda install -y pip wget python-wget joblib ipython ipykernel jupyterlab notebook nb_conda_kernels  pinocchio rclone pillow ipywidgets selenium geckodriver firefox
-pip install jupyter_contrib_nbextensions meshcat selenium omegaconf simplejson line_profiler opencv-python torchnet tqdm lxml transforms3d panda3d joblib xarray pandas matplotlib bokeh plyfile trimesh ipdb panda3d-gltf colorama pyyaml ipykernel scipy pypng h5py seaborn kornia pyarrow dt_apriltags open3d structlog imageio progressbar pyyaml psutil webdataset opencv-contrib-python roma torchgeometry  
+pip install jupyter_contrib_nbextensions meshcat selenium omegaconf simplejson line_profiler opencv-python torchnet tqdm lxml transforms3d panda3d joblib xarray pandas matplotlib bokeh==2.4.3 plyfile trimesh ipdb panda3d-gltf colorama pyyaml ipykernel scipy pypng h5py seaborn kornia pyarrow dt_apriltags open3d structlog imageio progressbar pyyaml psutil webdataset opencv-contrib-python roma torchgeometry  
 pip install -e .
+```
+
+#### Known issues
+
+1. bokeh should be installed with version 2.4.3, higher version will cause error
+```
+RuntimeError: Neither firefox and geckodriver nor a variant of chromium browser and chromedriver are available on system PATH. You can install the former with 'conda install -c conda-forge firefox geckodriver'.
 ```
 
 If you plan to further develop the MegaPose code, you may want to install dev tools via `pip install -e ".[ci,dev]"`. See [here](#dev-ops) for more details.
@@ -89,7 +97,7 @@ If you plan to further develop the MegaPose code, you may want to install dev to
 <details>
 <summary>Click for details...</summary>
 
-### Create a conda environment
+<!-- ### Create a conda environment
 Creat a conda environment with `python==3.9`. We will use this conda environment to manage a small number of dependencies needed for 
 
 ```
@@ -112,7 +120,7 @@ cd $MEGAPOSE_DIR/runjob_cli && pip install -e .
 runjob-config runjob_config.yml
 cd $MEGAPOSE_DIR && rm -rf src/megapose.egg-info
 pip install -e . --no-deps
-```
+``` -->
 
 ### Install Docker
 
@@ -312,6 +320,10 @@ We provide the pre-processed meshes ready to be used for rendering and training 
 - `shapenetcorev2.zip`
 
 **Important**: Before downloading this data, please make sure you are allowed to use these datasets i.e. you can download the original ones.
+
+```
+ln -s /mnt/2T/Data/MegaPose-Training-Data/MegaPose-GSO/train_pbr_web/ bop_gso
+```
 
 ## Usage
 We provide utilies for loading and visualizing the data.

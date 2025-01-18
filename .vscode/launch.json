@@ -1,0 +1,38 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "run_scene_dataset",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "run_scene_dataset.py",
+            "env": {
+                "CONDA_PREFIX": "/home/lyl/miniconda3/envs/megapose",
+            },
+            "cwd": "${workspaceFolder}/src/megapose/scripts/",
+            "console": "integratedTerminal",
+        },
+        {
+            "name": "run_inference_on_example",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "run_inference_on_example.py",
+            "env": {
+                "CONDA_PREFIX": "/home/lyl/miniconda3/envs/megapose",
+            },
+            "cwd": "${workspaceFolder}/src/megapose/scripts/",
+            "console": "integratedTerminal",
+            "args": "barbecue-sauce --vis-detections",
+        },
+    ]
+}

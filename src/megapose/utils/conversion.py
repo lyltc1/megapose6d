@@ -16,34 +16,33 @@ limitations under the License.
 
 
 # Standard Library
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 # MegaPose
 from megapose.datasets.scene_dataset import CameraData, ObjectData
 from megapose.panda3d_renderer.types import Panda3dCameraData, Panda3dObjectData
 
 
-def convert_scene_observation_to_panda3d(
-    camera_data: CameraData, object_datas: List[ObjectData]
+def convert_wds_scene_observation_to_panda3d(
+    camera_data: CameraData, object_datas: List[ObjectData], id2label: Dict[int, str]
 ) -> Tuple[Panda3dCameraData, List[Panda3dObjectData]]:
 
     assert camera_data.TWC is not None
-    assert camera_data.K is not None
-    assert camera_data.resolution is not None
+    assert camera_data.cam_K is not None
 
     panda3d_camera_data = Panda3dCameraData(
         TWC=camera_data.TWC,
-        K=camera_data.K,
+        K=camera_data.cam_K,
         resolution=camera_data.resolution,
     )
 
     panda3d_object_datas = []
     for object_data in object_datas:
-        assert object_data.TWO is not None
+        assert object_data.TCO is not None
         panda3d_object_datas.append(
             Panda3dObjectData(
-                label=object_data.label,
-                TWO=object_data.TWO,
+                label=id2label[object_data.obj_id],
+                TWO=camera_data.TWC * object_data.TCO,
             )
         )
     return panda3d_camera_data, panda3d_object_datas

@@ -221,5 +221,6 @@ def make_detections_from_object_data(object_data: List[ObjectData]) -> Detection
     )
     bboxes = torch.as_tensor(
         np.stack([data.bbox_modal for data in object_data]),
+        dtype=torch.float32
     )
     return PandasTensorCollection(infos=infos, bboxes=bboxes)

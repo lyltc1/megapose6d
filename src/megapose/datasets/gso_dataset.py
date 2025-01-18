@@ -52,11 +52,11 @@ class GoogleScannedObjectDataset(RigidObjectDataset):
         elif split in {"normalized", "pointcloud"}:
             scaling_factor = 0.1
 
-        object_ids = make_gso_infos(self.gso_dir)
+        object_names = make_gso_infos(self.gso_dir)
         objects = []
-        for object_id in object_ids:
-            model_path = self.gso_dir / object_id / "meshes" / "model.obj"
-            label = f"gso_{object_id}"
+        for object_name in object_names:
+            model_path = self.gso_dir / object_name / "meshes" / "model.obj"
+            label = f"gso_{object_name}"
             obj = RigidObject(
                 label=label,
                 mesh_path=model_path,

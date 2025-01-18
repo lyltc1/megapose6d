@@ -128,40 +128,92 @@ def write_scene_ds_as_wds(
     return
 
 
+def rle_to_binary_mask(rle):
+    """Converts a COCOs run-length encoding (RLE) to binary mask.
+
+    :param rle: Mask in RLE format
+    :return: a 2D binary numpy array where '1's represent the object
+    """
+    binary_array = np.zeros(np.prod(rle.get('size')), dtype=bool)
+    counts = rle.get('counts')
+
+    start = 0
+    for i in range(len(counts)-1):
+        start += counts[i] 
+        end = start + counts[i+1] 
+        binary_array[start:end] = (i + 1) % 2
+
+    binary_mask = binary_array.reshape(*rle.get('size'), order='F')
+
+    return binary_mask
+
+
+def io_load_masks(
+    mask_file,
+    instance_ids=None
+):
+    """Load object masks from an I/O object.
+    Instance_ids can be specified to apply RLE
+    decoding to a subset of object instances contained
+    in the file.
+
+    :param mask_file: I/O object that can be read with json.load.
+    :param masks_path: Path to json file.
+    :return: a [N,H,W] binary array containing object masks.
+    """
+    masks_rle = json.load(mask_file)
+    masks_rle = {int(k): v for k, v in masks_rle.items()}
+    if instance_ids is None:
+        instance_ids = masks_rle.keys()
+        instance_ids = sorted(instance_ids)
+    masks = np.stack([
+        rle_to_binary_mask(masks_rle[instance_id])
+        for instance_id in instance_ids])
+    return masks
+
+
 def load_scene_ds_obs(
     sample: Dict[str, Union[bytes, str]],
-    depth_scale: float = 1000.0,
     load_depth: bool = False,
-    label_format: str = "{label}",
+    load_mask: bool = False,
+    load_mask_visib: bool = True,
 ) -> SceneObservation:
-
-    assert isinstance(sample["rgb.png"], bytes)
-    assert isinstance(sample["segmentation.png"], bytes)
+    assert isinstance(sample["rgb.jpg"], bytes)
     assert isinstance(sample["depth.png"], bytes)
-    assert isinstance(sample["camera_data.json"], bytes)
-    assert isinstance(sample["infos.json"], bytes)
+    assert isinstance(sample["camera.json"], bytes)
+    assert isinstance(sample["gt.json"], bytes)
+    assert isinstance(sample["gt_info.json"], bytes)
+    assert isinstance(sample["mask_visib.json"], bytes)
+    assert isinstance(sample["mask.json"], bytes)
 
-    rgb = np.array(imageio.imread(io.BytesIO(sample["rgb.png"])))
-    segmentation = np.array(imageio.imread(io.BytesIO(sample["segmentation.png"])))
-    segmentation = np.asarray(segmentation, dtype=np.uint32)
+    rgb = np.array(imageio.imread(io.BytesIO(sample["rgb.jpg"])))
+    height, width = rgb.shape[:2]
+
+    gt_json: List[DataJsonType] = json.loads(sample["gt.json"])
+    gt_info_json: List[DataJsonType] = json.loads(sample["gt_info.json"])
+
+    object_datas = [ObjectData.from_json(gt, gt_info) for gt, gt_info in zip(gt_json, gt_info_json)]
+    camera_data = CameraData.from_json(sample["camera.json"], resolution=(height, width))
+
     depth = None
     if load_depth:
         depth = imageio.imread(io.BytesIO(sample["depth.png"]))
         depth = np.asarray(depth, dtype=np.float32)
-        depth /= depth_scale
-
-    object_datas_json: List[DataJsonType] = json.loads(sample["object_datas.json"])
-    object_datas = [ObjectData.from_json(d) for d in object_datas_json]
-    for obj in object_datas:
-        obj.label = label_format.format(label=obj.label)
-
-    camera_data = CameraData.from_json(sample["camera_data.json"])
-    infos = ObservationInfos.from_json(sample["infos.json"])
+        depth *= camera_data.depth_scale / 1000.0
+    mask_visib = None
+    if load_mask_visib:
+        mask_visib = io_load_masks(io.BytesIO(sample["mask_visib.json"]))
+    mask = None
+    if load_mask:
+        mask = io_load_masks(io.BytesIO(sample["mask.json"]))
+    
+    infos = ObservationInfos.from_key(sample["__key__"])
 
     return SceneObservation(
         rgb=rgb,
         depth=depth,
-        segmentation=segmentation,
+        mask_visib=mask_visib,
+        mask=mask,
         infos=infos,
         object_datas=object_datas,
         camera_data=camera_data,
@@ -177,21 +229,30 @@ class WebSceneDataset(SceneDataset):
         label_format: str = "{label}",
         load_frame_index: bool = False,
     ):
-        try:
-            ds_infos = json.loads((wds_dir / "infos.json").read_text())
-            self.depth_scale = ds_infos["depth_scale"]
-        except FileNotFoundError:
-            self.depth_scale = 1000
-        self.label_format = label_format
         self.wds_dir = wds_dir
 
         frame_index = None
         if load_frame_index:
-            frame_index = pd.read_feather((wds_dir / "frame_index.feather"))
+            with open(wds_dir / "key_to_shard.json", 'r') as file:
+                key_to_shard = json.load(file)
+            frame_index_data = []
+            for key, shard_id in key_to_shard.items():
+                scene_id, view_id = map(int, key.split('_'))
+                frame_index_data.append((scene_id, view_id, key, shard_id))
+            frame_index = pd.DataFrame(frame_index_data, columns=["scene_id", "view_id", "key", "shard_fname"])
 
         super().__init__(
             frame_index=frame_index, load_depth=load_depth, load_segmentation=load_segmentation
         )
+
+        self.id2label = dict()
+        if "google_scanned_objects" in wds_dir.name or "gso" in wds_dir.name.lower():
+            with open(wds_dir / "gso_models.json", 'r') as file:
+                datas = json.load(file)
+                for d in datas:
+                    self.id2label[d['obj_id']] = label_format + d['gso_id']
+        else:
+            raise NotImplementedError
 
     def get_tar_list(self) -> List[str]:
         tar_files = [str(x) for x in self.wds_dir.iterdir() if x.suffix == ".tar"]
@@ -228,9 +289,7 @@ class IterableWebSceneDataset(IterableSceneDataset):
 
         load_scene_ds_obs_ = partial(
             load_scene_ds_obs,
-            depth_scale=self.web_scene_dataset.depth_scale,
             load_depth=self.web_scene_dataset.load_depth,
-            label_format=self.web_scene_dataset.label_format,
         )
 
         def load_scene_ds_obs_iterator(

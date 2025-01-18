@@ -71,106 +71,77 @@ def transform_to_list(T: Transform) -> ListPose:
 @dataclass
 class ObjectData:
     # NOTE (Yann): bbox_amodal, bbox_modal, visib_fract should be moved to SceneObservation
-    label: str
-    TWO: Optional[Transform] = None
-    unique_id: Optional[int] = None
+    obj_id: int 
+    cam_R_m2c: Optional[np.ndarray] = None
+    cam_t_m2c: Optional[np.ndarray] = None
+    TCO: Optional[Transform] = None
     bbox_amodal: Optional[np.ndarray] = None  # (4, ) array [xmin, ymin, xmax, ymax]
     bbox_modal: Optional[np.ndarray] = None  # (4, ) array [xmin, ymin, xmax, ymax]
+    
     visib_fract: Optional[float] = None
-    TWO_init: Optional[
-        Transform
-    ] = None  # Some pose estimation datasets (ModelNet) provide an initial pose estimate
-    #  NOTE: This should be loaded externally
+
 
     def to_json(self) -> Dict[str, SingleDataJsonType]:
-        d: Dict[str, SingleDataJsonType] = dict(label=self.label)
-        for k in ("TWO", "TWO_init"):
-            if getattr(self, k) is not None:
-                d[k] = transform_to_list(getattr(self, k))
-        for k in ("bbox_amodal", "bbox_modal"):
-            if getattr(self, k) is not None:
-                d[k] = getattr(self, k).tolist()
-        for k in ("visib_fract", "unique_id"):
-            if getattr(self, k) is not None:
-                d[k] = getattr(self, k)
-        return d
+        raise NotImplementedError
 
     @staticmethod
-    def from_json(d: DataJsonType) -> "ObjectData":
-        assert isinstance(d, dict)
-        label = d["label"]
-        assert isinstance(label, str)
-        data = ObjectData(label=label)
-        for k in ("TWO", "TWO_init"):
-            if k in d:
-                item = d[k]
-                assert isinstance(item, list)
-                quat_list, trans_list = item
-                assert isinstance(quat_list, list)
-                assert isinstance(trans_list, list)
-                quat = tuple(quat_list)
-                trans = tuple(trans_list)
-                setattr(data, k, Transform(quat, trans))
-        for k in ("unique_id", "visib_fract"):
-            if k in d:
-                setattr(data, k, d[k])
-        for k in ("bbox_amodal", "bbox_modal"):
-            if k in d:
-                setattr(data, k, np.array(d[k]))
+    def from_json(gt: DataJsonType, gt_info: DataJsonType) -> "ObjectData":
+        assert isinstance(gt, dict) and isinstance(gt_info, dict)
+        obj_id = gt["obj_id"]
+        data = ObjectData(obj_id=obj_id)
+        data.cam_R_m2c = np.array(gt["cam_R_m2c"]).reshape(3, 3)
+        data.cam_t_m2c = np.array(gt["cam_t_m2c"]).reshape(3, 1) * 0.001
+        data.TCO = Transform(data.cam_R_m2c, data.cam_t_m2c)
+        data.bbox_amodal = np.array(ObjectData.box(*gt_info["bbox_obj"]))
+        data.bbox_modal = np.array(ObjectData.box(*gt_info["bbox_visib"]))
+        data.px_count_all = gt_info["px_count_all"]
+        data.px_count_valid = gt_info["px_count_valid"]
+        data.px_count_visib = gt_info["px_count_visib"]
+        data.visib_fract = gt_info["visib_fract"]
         return data
 
+    @staticmethod
+    def box(xmin: int, ymin: int, width: int, height: int) -> List[int]:
+        xmax = xmin + width
+        ymax = ymin + height
+        return [xmin, ymin, xmax, ymax]
 
 @dataclass
 class CameraData:
-    K: Optional[np.ndarray] = None
-    resolution: Optional[Resolution] = None
+    cam_K: Optional[np.ndarray] = None
+    depth_scale: Optional[float] = None
+    cam_R_w2c: Optional[np.ndarray] = None
+    cam_t_w2c: Optional[np.ndarray] = None
     TWC: Optional[Transform] = None
-    camera_id: Optional[str] = None
-    TWC_init: Optional[
-        Transform
-    ] = None  # Some pose estimation datasets (ModelNet) provide an initial pose estimate
-    #  NOTE: This should be loaded externally
+    resolution: Optional[Resolution] = None
 
     def to_json(self) -> str:
-        d: Dict[str, SingleDataJsonType] = dict()
-        for k in ("TWC", "TWC_init"):
-            if getattr(self, k) is not None:
-                d[k] = transform_to_list(getattr(self, k))
-        for k in ("K",):
-            if getattr(self, k) is not None:
-                d[k] = getattr(self, k).tolist()
-        for k in ("camera_id", "resolution"):
-            if getattr(self, k) is not None:
-                d[k] = getattr(self, k)
-        return json.dumps(d)
+        pass
+        # d: Dict[str, SingleDataJsonType] = dict()
+        # for k in ("TWC", "TWC_init"):
+        #     if getattr(self, k) is not None:
+        #         d[k] = transform_to_list(getattr(self, k))
+        # for k in ("K",):
+        #     if getattr(self, k) is not None:
+        #         d[k] = getattr(self, k).tolist()
+        # for k in ("camera_id", "resolution"):
+        #     if getattr(self, k) is not None:
+        #         d[k] = getattr(self, k)
+        # return json.dumps(d)
 
     @staticmethod
-    def from_json(data_str: str) -> "CameraData":
+    def from_json(data_str: str, resolution: Resolution) -> "CameraData":
         d: DataJsonType = json.loads(data_str)
         assert isinstance(d, dict)
         data = CameraData()
-        for k in ("TWC", "TWC_init"):
-            if k in d:
-                item = d[k]
-                assert isinstance(item, list)
-                quat_list, trans_list = item
-                assert isinstance(quat_list, list)
-                assert isinstance(trans_list, list)
-                quat = tuple(quat_list)
-                trans = tuple(trans_list)
-                setattr(data, k, Transform(tuple(quat), tuple(trans)))
-        for k in ("camera_id",):
-            if k in d:
-                setattr(data, k, d[k])
-        for k in ("K",):
-            if k in d:
-                setattr(data, k, np.array(d[k]))
-        if "resolution" in d:
-            assert isinstance(d["resolution"], list)
-            h, w = d["resolution"]
-            assert isinstance(h, int)
-            assert isinstance(w, int)
-            data.resolution = (h, w)
+
+        setattr(data, "cam_K", np.array(d["cam_K"]).reshape(3, 3))
+        setattr(data, "depth_scale", d["depth_scale"])
+        setattr(data, "cam_R_w2c", np.array(d["cam_R_w2c"]).reshape(3, 3))
+        setattr(data, "cam_t_w2c", np.array(d["cam_t_w2c"]).reshape(3, 1) * 0.001)
+        setattr(data, "TWC", Transform(data.cam_R_w2c, data.cam_t_w2c))
+        setattr(data, "resolution", resolution)
+
         return data
 
 
@@ -179,29 +150,25 @@ class ObservationInfos:
     scene_id: str
     view_id: str
 
-    def to_json(self) -> str:
-        return json.dumps(self.__dict__)
-
     @staticmethod
-    def from_json(data_str: str) -> "ObservationInfos":
-        d = json.loads(data_str)
-        assert "scene_id" in d
-        assert "view_id" in d
-        return ObservationInfos(scene_id=d["scene_id"], view_id=d["view_id"])
+    def from_key(data_key: str) -> "ObservationInfos":
+        scene_id, view_id = data_key.split("_")
+        return ObservationInfos(scene_id=scene_id, view_id=view_id)
 
 
 @dataclass
 class SceneObservation:
     rgb: Optional[np.ndarray] = None  # (h,w,3) uint8 numpy array
     depth: Optional[np.ndarray] = None  # (h, w), np.float32
-    segmentation: Optional[np.ndarray] = None  # (h, w), np.uint32 (important);
+    mask_visib: Optional[np.ndarray] = None  # (n, h, w) np.bool
+    mask: Optional[np.ndarray] = None  # (n, h, w) np.bool
     # contains objects unique ids. int64 are not handled and can be dangerous when used with PIL
     infos: Optional[ObservationInfos] = None
     object_datas: Optional[List[ObjectData]] = None
     camera_data: Optional[CameraData] = None
     binary_masks: Optional[
         Dict[int, np.ndarray]
-    ] = None  # dict mapping unique id to (h, w) np.bool_
+    ] = None  # dict mapping unique id to (h, w) np.bool
 
     @staticmethod
     def collate_fn(
