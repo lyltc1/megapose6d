@@ -112,6 +112,7 @@ class PoseDataset(torch.utils.data.IterableDataset):
     def __init__(
         self,
         scene_ds: Union[SceneDataset, IterableSceneDataset],
+        resize: Resolution = (480, 640),
         min_area: Optional[float] = None,
         apply_rgb_augmentation: bool = True,
         apply_depth_augmentation: bool = False,
@@ -122,6 +123,7 @@ class PoseDataset(torch.utils.data.IterableDataset):
     ):
 
         self.scene_ds = scene_ds
+        self.resize_transform = CropResizeToAspectTransform(resize=resize)
         self.min_area = min_area
 
         self.background_augmentations = []
@@ -232,6 +234,10 @@ class PoseDataset(torch.utils.data.IterableDataset):
         timings = dict()
 
         s = time.time()
+        obs = self.resize_transform(obs)
+        timings["resize_augmentation"] = time.time() - s
+
+        s = time.time()
         for aug in self.background_augmentations:
             obs = aug(obs)
         timings["background_augmentation"] = time.time() - s
@@ -247,6 +253,7 @@ class PoseDataset(torch.utils.data.IterableDataset):
         timings["depth_augmentation"] = time.time() - s
 
         s = time.time()
+        unique_ids_visible = set(np.unique(obs.segmentation))
         valid_objects = []
 
         assert obs.object_datas is not None
@@ -255,7 +262,7 @@ class PoseDataset(torch.utils.data.IterableDataset):
         for obj in obs.object_datas:
             assert obj.bbox_modal is not None
             valid = False
-            if np.all(obj.bbox_modal) >= 0:
+            if obj.unique_id in unique_ids_visible and np.all(obj.bbox_modal) >= 0:
                 valid = True
 
             if valid and self.min_area is not None:
@@ -289,15 +296,16 @@ class PoseDataset(torch.utils.data.IterableDataset):
 
         self.timings = timings
 
-        assert obs.camera_data.cam_K is not None
-        assert object_data.TCO is not None
+        assert obs.camera_data.K is not None
+        assert obs.camera_data.TWC is not None
+        assert object_data.TWO is not None
         # Add depth to PoseData
         data = PoseData(
             rgb=obs.rgb,
             depth=obs.depth if obs.depth is not None else None,
             bbox=object_data.bbox_modal,
-            K=obs.camera_data.cam_K,
-            TCO=object_data.TCO.matrix,
+            K=obs.camera_data.K,
+            TCO=(obs.camera_data.TWC.inverse() * object_data.TWO).matrix,
             object_data=object_data,
         )
         return data

@@ -57,25 +57,14 @@ class SceneDatasetWrapper(SceneDataset):
 
 def remove_invisible_objects(obs: SceneObservation) -> SceneObservation:
     """Remove objects that do not appear in the segmentation."""
+    assert obs.segmentation is not None
     assert obs.object_datas is not None
-
-    visib_object_datas = []
-    visib_indices = []
-    for i, object_data in enumerate(obs.object_datas):
-        if object_data.px_count_visib > 0.0:
-            visib_object_datas.append(object_data)
-            visib_indices.append(i)
-
+    ids_in_segm = np.unique(obs.segmentation)
+    ids_visible = set(ids_in_segm[ids_in_segm > 0])
     visib_object_datas = [
-        object_data for object_data in obs.object_datas if object_data.px_count_visib > 0.0
+        object_data for object_data in obs.object_datas if object_data.unique_id in ids_visible
     ]
     new_obs = dataclasses.replace(obs, object_datas=visib_object_datas)
-    if obs.mask is not None:
-        new_obs = dataclasses.replace(new_obs, mask=[obs.mask[i] for i in visib_indices])
-    if obs.mask_visib is not None:
-        new_obs = dataclasses.replace(
-            new_obs, mask_visib=[obs.mask_visib[i] for i in visib_indices]
-        )
     return new_obs
 
 

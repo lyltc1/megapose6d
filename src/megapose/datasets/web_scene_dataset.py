@@ -127,51 +127,6 @@ def write_scene_ds_as_wds(
     (wds_dir / "infos.json").write_text(json.dumps(ds_infos))
     return
 
-
-def rle_to_binary_mask(rle):
-    """Converts a COCOs run-length encoding (RLE) to binary mask.
-
-    :param rle: Mask in RLE format
-    :return: a 2D binary numpy array where '1's represent the object
-    """
-    binary_array = np.zeros(np.prod(rle.get('size')), dtype=bool)
-    counts = rle.get('counts')
-
-    start = 0
-    for i in range(len(counts)-1):
-        start += counts[i] 
-        end = start + counts[i+1] 
-        binary_array[start:end] = (i + 1) % 2
-
-    binary_mask = binary_array.reshape(*rle.get('size'), order='F')
-
-    return binary_mask
-
-
-def io_load_masks(
-    mask_file,
-    instance_ids=None
-):
-    """Load object masks from an I/O object.
-    Instance_ids can be specified to apply RLE
-    decoding to a subset of object instances contained
-    in the file.
-
-    :param mask_file: I/O object that can be read with json.load.
-    :param masks_path: Path to json file.
-    :return: a [N,H,W] binary array containing object masks.
-    """
-    masks_rle = json.load(mask_file)
-    masks_rle = {int(k): v for k, v in masks_rle.items()}
-    if instance_ids is None:
-        instance_ids = masks_rle.keys()
-        instance_ids = sorted(instance_ids)
-    masks = np.stack([
-        rle_to_binary_mask(masks_rle[instance_id])
-        for instance_id in instance_ids])
-    return masks
-
-
 def load_scene_ds_obs(
     sample: Dict[str, Union[bytes, str]],
     load_depth: bool = False,
@@ -200,12 +155,16 @@ def load_scene_ds_obs(
         depth = imageio.imread(io.BytesIO(sample["depth.png"]))
         depth = np.asarray(depth, dtype=np.float32)
         depth *= camera_data.depth_scale / 1000.0
+
     mask_visib = None
     if load_mask_visib:
-        mask_visib = io_load_masks(io.BytesIO(sample["mask_visib.json"]))
+        data_ = json.load(io.BytesIO(sample["mask_visib.json"]))
+        mask_visib = [data_[str(i)] for i in range(len(data_))]
+
     mask = None
     if load_mask:
-        mask = io_load_masks(io.BytesIO(sample["mask.json"]))
+        data_ = json.load(io.BytesIO(sample["mask.json"]))
+        mask = [data_[str(i)] for i in range(len(data_))]
     
     infos = ObservationInfos.from_key(sample["__key__"])
 
