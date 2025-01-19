@@ -60,7 +60,7 @@ from megapose.utils.types import Resolution
 class PoseData:
     """
     rgb: (h, w, 3) uint8
-    depth: (bsz, h, w) float32
+    depth: (h, w) float32
     bbox: (4, ) int
     K: (3, 3) float32
     TCO: (4, 4) float32
