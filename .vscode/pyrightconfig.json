@@ -1,0 +1,13 @@
+{
+    "exclude": [
+        "**/deps",
+        "**/__pycache__",
+        "**/venv",
+        "**/build",
+        "**/dist",
+        "**/.git",
+        "**/local_data",
+        "**/images",
+        "**/license_files",
+    ]
+}

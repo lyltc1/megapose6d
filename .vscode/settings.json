@@ -9,4 +9,15 @@
     "python.linting.enabled": true,
     "python.linting.flake8Enabled": true,
     "python.linting.mypyEnabled": true,
+    "python.analysis.exclude": [
+        "**/deps",
+        "**/__pycache__",
+        "**/venv",
+        "**/build",
+        "**/dist",
+        "**/.git",
+        "**/local_data",
+        "**/images",
+        "**/license_files",
+    ]
 }
