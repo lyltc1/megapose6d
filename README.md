@@ -309,21 +309,44 @@ For optimal performance, we recommend using `megapose-1.0-RGB-multi-hypothesis` 
 
 
 # Dataset
+The data structure is constructed as follows:
+```
+local_data
+├── webdatasets
+    ├── bop_gso
+        ├── gso_models.json
+        ├── key_to_shard.json
+        ├── shard-000000.tar (needn't to be extracted)
+        ├── shard-000001.tar (needn't to be extracted)
+        ├── ...
+├──google_scanned_objects
+    ├──models
+        ├── invalid_meshes.json
+        ├── train_test_split.json
+        ├── valid_meshes.json
+        ├── models_bop-renderer_scale=0.1
+        ├── models_normalized
+        ├── models_orig
+        ├── models_pointcloud
+```
 
-## Dataset information
-The dataset is available at this [url](https://www.paris.inria.fr/archive_ylabbeprojectsdata/megapose/webdatasets/). It is split into two datasets: `gso_1M` (Google Scanned Objects) and `shapenet_1M` (ShapeNet objects). Each dataset has 1 million images which were generated using [BlenderProc](https://github.com/DLR-RM/BlenderProc).
 
-Datasets are released in the [webdataset](https://github.com/webdataset/webdataset) format for high reading performance. Each dataset is split into chunks of size ~600MB containing 1000 images each. 
+## Download bop_gso
+Use the following commands to download webdataset, currently the script is copied and not ready to be used.
+```
+cd src/megapose/scripts
+python download_webdataset.py --dataset GSO -O $MEGAPOSE_DATA_DIR/webdatasets/bop_gso
+wget https://huggingface.co/datasets/bop-benchmark/datasets/resolve/main/MegaPose-GSO/gso_models.json -O $MEGAPOSE_DATA_DIR/webdatasets/bop_gso/gso_models.json
+wget https://huggingface.co/datasets/bop-benchmark/datasets/resolve/main/MegaPose-GSO/key_to_shard.json -O $MEGAPOSE_DATA_DIR/webdatasets/bop_gso/key_to_shard.json
+```
 
 We provide the pre-processed meshes ready to be used for rendering and training in this [directory](https://www.paris.inria.fr/archive_ylabbeprojectsdata/megapose/tars/):
 - `google_scanned_objects.zip`
 - `shapenetcorev2.zip`
 
-**Important**: Before downloading this data, please make sure you are allowed to use these datasets i.e. you can download the original ones.
+After extract `google_scanned_objects.zip` into `local_data`, you will get the `google_scanned_objects` folder under `local_data`.
 
-```
-ln -s /mnt/2T/Data/MegaPose-Training-Data/MegaPose-GSO/train_pbr_web/ bop_gso
-```
+**Important**: Before downloading this data, please make sure you are allowed to use these datasets i.e. you can download the original ones.
 
 ## Usage
 We provide utilies for loading and visualizing the data.
