@@ -14,7 +14,7 @@ from PIL import Image
 # MegaPose
 from megapose.config import LOCAL_DATA_DIR
 from megapose.datasets.object_dataset import RigidObject, RigidObjectDataset
-from megapose.datasets.scene_dataset import CameraData, ObjectData
+from megapose.datasets.backup_scene_dataset import CameraData, ObjectData
 from megapose.inference.types import (
     DetectionsType,
     ObservationTensor,
@@ -24,7 +24,7 @@ from megapose.inference.utils import make_detections_from_object_data
 from megapose.lib3d.transform import Transform
 from megapose.panda3d_renderer import Panda3dLightData
 from megapose.panda3d_renderer.panda3d_scene_renderer import Panda3dSceneRenderer
-from megapose.utils.conversion import convert_scene_observation_to_panda3d
+from megapose.utils.backup_conversion import convert_scene_observation_to_panda3d
 from megapose.utils.load_model import NAMED_MODELS, load_named_model
 from megapose.utils.logging import get_logger, set_logging_level
 from megapose.visualization.bokeh_plotter import BokehPlotter
