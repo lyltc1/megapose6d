@@ -102,11 +102,11 @@ RuntimeError: Neither firefox and geckodriver nor a variant of chromium browser 
 
 If you plan to further develop the MegaPose code, you may want to install dev tools via `pip install -e ".[ci,dev]"`. See [here](#dev-ops) for more details.
 
-<!-- ### Option B: Docker Installation
+### Option B: Docker Installation
 <details>
 <summary>Click for details...</summary>
 
-### Create a conda environment
+<!-- ### Create a conda environment
 Creat a conda environment with `python==3.9`. We will use this conda environment to manage a small number of dependencies needed for 
 
 ```
@@ -211,8 +211,8 @@ Alternatively, you can use `runjob` to build the docker image. Note that this wi
 
 ```
 runjob-docker --project=megapose --build-local --version 1.0
-```
-</details> -->
+```  -->
+</details>
 
 
 # Inference tutorial
