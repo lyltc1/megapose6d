@@ -1,20 +1,3 @@
-"""
-Copyright (c) 2022 Inria & NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-"""
-
-
 # Standard Library
 import functools
 import os
@@ -48,7 +31,7 @@ from megapose.lib3d.rigid_mesh_database import MeshDataBase
 from megapose.panda3d_renderer.panda3d_batch_renderer import Panda3dBatchRenderer
 from megapose.training.megapose_forward_loss import megapose_forward_loss
 from megapose.training.pose_models_cfg import check_update_config, create_model_pose
-from megapose.training.backup_training_config import DatasetConfig, TrainingConfig
+from megapose.training.training_config import DatasetConfig, TrainingConfig
 from megapose.training.utils import (
     CudaTimer,
     make_lr_ratio_function,
@@ -72,7 +55,7 @@ def worker_init_fn(worker_id: int) -> None:
     set_seed(get_unique_seed())
 
 
-def train_megapose(cfg: TrainingConfig) -> None:
+def train_dupe(cfg: TrainingConfig) -> None:
     logger = get_logger("main")
     cudnn.benchmark = True
     torch.multiprocessing.set_sharing_strategy("file_system")

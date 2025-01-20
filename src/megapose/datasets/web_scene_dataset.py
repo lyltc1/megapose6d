@@ -132,6 +132,7 @@ def load_scene_ds_obs(
     load_depth: bool = False,
     load_mask: bool = False,
     load_mask_visib: bool = True,
+    id2label: Dict[int, str] = dict(),
 ) -> SceneObservation:
     assert isinstance(sample["rgb.jpg"], bytes)
     assert isinstance(sample["depth.png"], bytes)
@@ -148,6 +149,8 @@ def load_scene_ds_obs(
     gt_info_json: List[DataJsonType] = json.loads(sample["gt_info.json"])
 
     object_datas = [ObjectData.from_json(gt, gt_info) for gt, gt_info in zip(gt_json, gt_info_json)]
+    for object_data in object_datas:
+        object_data.label = id2label[object_data.obj_id]
     camera_data = CameraData.from_json(sample["camera.json"], resolution=(height, width))
 
     depth = None
@@ -209,7 +212,7 @@ class WebSceneDataset(SceneDataset):
             with open(wds_dir / "gso_models.json", 'r') as file:
                 datas = json.load(file)
                 for d in datas:
-                    self.id2label[d['obj_id']] = label_format + d['gso_id']
+                    self.id2label[d['obj_id']] = label_format.format(label=d['gso_id'])
         else:
             raise NotImplementedError
 
@@ -237,7 +240,7 @@ class WebSceneDataset(SceneDataset):
             assert tar_file is not None
             sample[k] = tar_file.read()
 
-        obs = load_scene_ds_obs(sample, load_depth=self.load_depth)
+        obs = load_scene_ds_obs(sample, load_depth=self.load_depth, id2label=self.id2label)
         tar.close()
         return obs
 
@@ -249,6 +252,7 @@ class IterableWebSceneDataset(IterableSceneDataset):
         load_scene_ds_obs_ = partial(
             load_scene_ds_obs,
             load_depth=self.web_scene_dataset.load_depth,
+            id2label=self.web_scene_dataset.id2label,
         )
 
         def load_scene_ds_obs_iterator(

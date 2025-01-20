@@ -181,9 +181,6 @@ def make_scene_dataset(
         )
 
     # Datasets in webdataset format
-    elif ds_name in ["webdataset.bop_gso"]:
-        ds = WebSceneDataset(WDS_DS_DIR / "bop_gso", label_format="gso_{label}")
-
     elif ds_name.startswith("webdataset."):
         ds_name = ds_name[len("webdataset.") :]
         ds = WebSceneDataset(WDS_DS_DIR / ds_name)

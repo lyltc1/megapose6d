@@ -100,7 +100,7 @@ def train_on_shapenet(
 
 def train_on_gso(
     cfg: TrainingConfig,
-    ds_name: str = "bop_gso",
+    ds_name: str = "gso_1M",
     n_objects: int = 940,
 ) -> TrainingConfig:
 

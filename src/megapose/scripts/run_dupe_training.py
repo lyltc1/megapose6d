@@ -1,41 +1,3 @@
-"""
-Copyright (c) 2022 Inria & NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-"""
-
-
-# SPDX-FileCopyrightText: Copyright (c) <year> NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-# SPDX-License-Identifier: MIT
-#
-# Permission is hereby granted, free of charge, to any person obtaining a
-# copy of this software and associated documentation files (the "Software"),
-# to deal in the Software without restriction, including without limitation
-# the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the
-# Software is furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-# DEALINGS IN THE SOFTWARE
-
 # Standard Library
 import os
 from typing import List, Optional
@@ -48,7 +10,7 @@ from omegaconf import OmegaConf
 # MegaPose
 from megapose.bop_config import BOP_CONFIG
 from megapose.config import EXP_DIR
-from megapose.training.train_megapose import DatasetConfig, train_megapose
+from megapose.training.train_dupe import DatasetConfig, train_dupe
 from megapose.training.training_config import HardwareConfig, TrainingConfig
 from megapose.utils.logging import get_logger, set_logging_level
 
@@ -123,6 +85,7 @@ def make_refiner_cfg(cfg: TrainingConfig) -> TrainingConfig:
     cfg.predict_pose_update = True
     cfg.loss_alpha_pose = 1.0
     cfg.predict_rendered_views_logits = False
+    cfg.render_normals = False
     cfg.multiview_type = "TCO+front_3views"
     cfg.n_rendered_views = 4
     cfg.n_iterations = 3
@@ -338,4 +301,4 @@ if __name__ == "__main__":
     assert cfg.run_id is not None
     logger.info(f"{Fore.GREEN}Running training of {cfg.run_id} ... {Style.RESET_ALL}")
     cfg.save_dir = str(EXP_DIR / cfg.run_id)
-    train_megapose(cfg)
+    train_dupe(cfg)

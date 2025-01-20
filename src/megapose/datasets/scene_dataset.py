@@ -71,7 +71,8 @@ def transform_to_list(T: Transform) -> ListPose:
 @dataclass
 class ObjectData:
     # NOTE (Yann): bbox_amodal, bbox_modal, visib_fract should be moved to SceneObservation
-    obj_id: int 
+    obj_id: int
+    label: Optional[str] = None
     cam_R_m2c: Optional[np.ndarray] = None
     cam_t_m2c: Optional[np.ndarray] = None
     TCO: Optional[Transform] = None

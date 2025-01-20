@@ -541,7 +541,7 @@ class PosePredictor(nn.Module):
             tCV_R = TCV_O_input_flatten[..., :3, [-1]] + TCV_O_input_flatten[
                 ..., :3, :3
             ] @ tOR.unsqueeze(1).repeat(1, n_views, 1).flatten(0, 1).unsqueeze(-1)
-            tCV_R = tCV_R.squeeze(-1).view(bsz, TCV_O_input.shape[1], 3)
+            tCV_R = tCV_R.squeeze(-1).view(bsz, n_views, 3)
 
             images_crop, K_crop, boxes_rend, boxes_crop = self.crop_inputs(
                 images, K, TCO_input, tCR, labels
