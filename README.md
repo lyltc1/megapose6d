@@ -83,7 +83,16 @@ conda install -y pip wget python-wget joblib ipython ipykernel jupyterlab notebo
 pip install jupyter_contrib_nbextensions meshcat selenium omegaconf simplejson line_profiler opencv-python torchnet tqdm lxml transforms3d panda3d joblib xarray pandas matplotlib bokeh==2.4.3 plyfile trimesh ipdb panda3d-gltf colorama pyyaml ipykernel scipy pypng h5py seaborn kornia pyarrow dt_apriltags open3d structlog imageio progressbar pyyaml psutil webdataset opencv-contrib-python roma torchgeometry  
 pip install -e .
 ```
+Compiling PointNet2
 
+```
+cd src/megapose/models/pointnet2
+python setup.py install
+```
+Install Pytorch3d from source, since prebuild binaries doesn't work for me. This step should take a while.
+```
+pip install "git+https://github.com/facebookresearch/pytorch3d.git@stable"
+```
 #### Known issues
 
 1. bokeh should be installed with version 2.4.3, higher version will cause error
@@ -93,11 +102,11 @@ RuntimeError: Neither firefox and geckodriver nor a variant of chromium browser 
 
 If you plan to further develop the MegaPose code, you may want to install dev tools via `pip install -e ".[ci,dev]"`. See [here](#dev-ops) for more details.
 
-### Option B: Docker Installation
+<!-- ### Option B: Docker Installation
 <details>
 <summary>Click for details...</summary>
 
-<!-- ### Create a conda environment
+### Create a conda environment
 Creat a conda environment with `python==3.9`. We will use this conda environment to manage a small number of dependencies needed for 
 
 ```
@@ -120,7 +129,7 @@ cd $MEGAPOSE_DIR/runjob_cli && pip install -e .
 runjob-config runjob_config.yml
 cd $MEGAPOSE_DIR && rm -rf src/megapose.egg-info
 pip install -e . --no-deps
-``` -->
+```
 
 ### Install Docker
 
@@ -203,7 +212,7 @@ Alternatively, you can use `runjob` to build the docker image. Note that this wi
 ```
 runjob-docker --project=megapose --build-local --version 1.0
 ```
-</details>
+</details> -->
 
 
 # Inference tutorial
