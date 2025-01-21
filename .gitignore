@@ -22,3 +22,4 @@ tmp/
 *tmp/
 tests.sh
 **/mae_pretrain_vit_base.pth
+*.html
