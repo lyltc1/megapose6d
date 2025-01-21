@@ -39,7 +39,7 @@ from megapose.inference.types import (
     ObservationTensor,
     PoseEstimatesType,
 )
-from megapose.training.utils import CudaTimer
+from megapose.training.backup_utils import CudaTimer
 from megapose.utils.distributed import get_rank, get_tmp_dir, get_world_size
 from megapose.utils.logging import get_logger
 

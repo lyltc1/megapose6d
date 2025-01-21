@@ -40,6 +40,49 @@ class HardwareConfig:
     n_cpus: int = 8
     n_gpus: int = 1
 
+@dataclass
+class FeatureExtractionConfig:
+    vit_type: str = "vit_base"
+    up_type: str = "linear"
+    embed_dim: int = 768
+    out_dim: int = 256
+    use_pyramid_feat: bool = True
+    pretrained: bool = True
+
+@dataclass
+class DenoiserConfig:
+    target_dim: int = 7
+    z_dim: int = 512
+    d_model: int = 512
+    mlp_hidden_dim: int = 128
+
+@dataclass
+class GaussianDiffusionConfig:
+    timesteps: int = 50
+    objective: str = "pred_noise"
+    sampling_timesteps: int = -1
+    beta_1: float = 0.0001
+    beta_T: float = 0.1
+    loss_type: str = "l1"
+    beta_schedule: str = "custom"
+    p2_loss_weight_gamma: float = 0.0
+    p2_loss_weight_k: float = 1.0
+
+@dataclass
+class PoseDiffusionModelConfig:
+    input_dim: int = 256
+    hidden_dim: int = 256
+    out_dim: int = 256
+    pe_radius1: float = 0.1
+    pe_radius2: float = 0.2
+    focusing_factor: int = 3
+    temp: float = 0.1
+    sim_type: str = "cosine"
+    normalize_feat: bool = True
+    loss_dis_thres: float = 0.15
+    pose_encoding_type: str = "absT_quaR"
+    gaussian_diffuser: GaussianDiffusionConfig = GaussianDiffusionConfig()
+    denoiser: DenoiserConfig = DenoiserConfig()
 
 @dataclass
 class TrainingConfig(omegaconf.dictconfig.DictConfig):
@@ -90,17 +133,18 @@ class TrainingConfig(omegaconf.dictconfig.DictConfig):
     logging_style: str = "manyprints"
 
     # Network
-    backbone_str: str = "vanilla_resnet34"
     multiview_type: str = "TCO"
     views_inplane_rotations: bool = False
     n_rendered_views: int = 1
     remove_TCO_rendering: bool = False
     predict_rendered_views_logits: bool = False
     predict_pose_update: bool = True
-    render_normals: bool = True
+    render_normals: bool = False
     input_depth: bool = False
     depth_normalization_type: str = "tCR_scale_clamp_center"
     render_depth: bool = False
+    feature_extraction: FeatureExtractionConfig = FeatureExtractionConfig()
+    pose_diffusion_model: PoseDiffusionModelConfig = PoseDiffusionModelConfig()
 
     # Training
     # Hypotheses

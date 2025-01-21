@@ -92,38 +92,11 @@ def create_model_pose(
     renderer: Panda3dBatchRenderer,
     mesh_db: BatchedMeshes,
 ) -> PosePredictor:
-    n_channels = 3
-    n_normals_channels = 3 if cfg.render_normals else 0
-    n_rendered_depth_channels = 1 if cfg.render_depth else 0
-    n_depth_channels = 1 if cfg.input_depth else 0
-    # Assumes that if you are rendering depth you are also
-    # inputting it from the model
-    n_inputs = (n_channels + n_depth_channels) + (
-        (n_channels + n_normals_channels + n_rendered_depth_channels) * cfg.n_rendered_views
-    )
-    backbone_str = cfg.backbone_str
-    render_size = (240, 320)
-    if "vanilla_resnet34" == backbone_str:
-        n_features = 512
-        backbone = models.__dict__["resnet34"](num_classes=n_features, n_input_channels=n_inputs)
-        backbone.n_features = n_features
-    elif "resnet34" == backbone_str:
-        backbone = WideResNet34(n_inputs=n_inputs)
-    elif "resnet18" == backbone_str:
-        backbone = WideResNet18(n_inputs=n_inputs)
-    elif "resnet34_width=" in backbone_str:
-        width = int(backbone_str.split("resnet34_width=")[1])
-        backbone = WideResNet34(n_inputs=n_inputs, width=width)
-    else:
-        raise ValueError("Unknown backbone", backbone_str)
 
-    logger.debug(f"Backbone: {backbone_str}")
-    backbone.n_inputs = n_inputs
     model = PosePredictor(
-        backbone=backbone,
+        cfg = cfg,
         renderer=renderer,
         mesh_db=mesh_db,
-        render_size=render_size,
         n_rendered_views=cfg.n_rendered_views,
         views_inplane_rotations=cfg.views_inplane_rotations,
         multiview_type=cfg.multiview_type,

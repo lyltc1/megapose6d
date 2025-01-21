@@ -1,20 +1,3 @@
-"""
-Copyright (c) 2022 Inria & NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-"""
-
-
 # Standard Library
 import time
 from collections import defaultdict
@@ -28,20 +11,26 @@ from torch import nn
 
 # MegaPose
 from megapose.datasets.scene_dataset import Resolution
+from megapose.training.training_config import TrainingConfig
 from megapose.lib3d.camera_geometry import boxes_from_uv, get_K_crop_resize
-from megapose.lib3d.camera_geometry import (
-    project_points_robust as project_points_robust,
-)
+from megapose.lib3d.camera_geometry import project_points_robust
+
 from megapose.lib3d.cosypose_ops import pose_update_with_reference_point
-from megapose.lib3d.cropping import deepim_crops_robust as deepim_crops_robust
+from megapose.lib3d.cropping import deepim_crops_robust, box_shaped_then_crops
 from megapose.lib3d.multiview import make_TCO_multiview
 from megapose.lib3d.rigid_mesh_database import MeshDataBase
 from megapose.lib3d.rotations import compute_rotation_matrix_from_ortho6d
 from megapose.lib3d.transform_ops import normalize_T
+
+from megapose.models.feature_extraction import ViT_AE
+from megapose.models.coarse_point_matching import CoarsePointMatching
+from megapose.models.pose_diffusion_model import PoseDiffusionModel
+from megapose.models.transformer import GeometricStructureEmbedding
+
 from megapose.panda3d_renderer import Panda3dLightData
 from megapose.panda3d_renderer.panda3d_batch_renderer import Panda3dBatchRenderer
 from megapose.panda3d_renderer.panda3d_scene_renderer import make_scene_lights
-from megapose.training.utils import CudaTimer
+from megapose.training.backup_utils import CudaTimer
 from megapose.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -60,7 +49,7 @@ class PosePredictorOutput:
     K: torch.Tensor
     K_crop: torch.Tensor
     network_outputs: Dict[str, torch.Tensor]
-    boxes_rend: torch.Tensor
+    boxes_rend: Optional[torch.Tensor]
     boxes_crop: torch.Tensor
     renderings_logits: torch.Tensor
     timing_dict: Dict[str, float]
@@ -81,16 +70,15 @@ class PosePredictorDebugData:
 class PosePredictor(nn.Module):
     def __init__(
         self,
-        backbone: torch.nn.Module,
+        cfg: TrainingConfig,
         renderer: Panda3dBatchRenderer,
         mesh_db: MeshDataBase,
-        render_size: Resolution = (240, 320),
         multiview_type: str = "front_3views",
         views_inplane_rotations: bool = False,
         remove_TCO_rendering: bool = False,
         predict_pose_update: bool = True,
         predict_rendered_views_logits: bool = False,
-        render_normals: bool = True,
+        render_normals: bool = False,
         n_rendered_views: int = 1,
         input_depth: bool = False,
         render_depth: bool = False,
@@ -98,9 +86,8 @@ class PosePredictor(nn.Module):
     ):
         super().__init__()
 
-        self.backbone = backbone
+        self.render_size = (224, 224)
         self.renderer = renderer
-        self.render_size = render_size
         self.n_rendered_views = n_rendered_views
         self.input_depth = input_depth
         self.multiview_type = multiview_type
@@ -113,21 +100,20 @@ class PosePredictor(nn.Module):
         self.predict_pose_update = predict_pose_update
         self.mesh_db = mesh_db
 
-        n_features = backbone.n_features
-        assert isinstance(n_features, int)
+        self.feature_extraction = ViT_AE(cfg.feature_extraction)
+        self.pose_diffusion_model = PoseDiffusionModel(cfg.pose_diffusion_model)
 
-        # TODO: Change to torch ModuleDict
         self.heads: Dict[str, Union[torch.nn.Linear, Callable]] = dict()
-        self.predict_pose_update = predict_pose_update
-        if self.predict_pose_update:
-            self._pose_dim = 9
-            self.pose_fc = nn.Linear(n_features, self._pose_dim, bias=True)
-            self.heads["pose"] = self.pose_fc
+        # self.predict_pose_update = predict_pose_update
+        # if self.predict_pose_update:
+        #     self._pose_dim = 9
+        #     self.pose_fc = nn.Linear(n_features, self._pose_dim, bias=True)
+        #     self.heads["pose"] = self.pose_fc
 
-        self.predict_rendered_views_logits = predict_rendered_views_logits
-        if self.predict_rendered_views_logits:
-            self.views_logits_head = nn.Linear(n_features, self.n_rendered_views, bias=True)
-            self.heads["renderings_logits"] = self.views_logits_head
+        # self.predict_rendered_views_logits = predict_rendered_views_logits
+        # if self.predict_rendered_views_logits:
+        #     self.views_logits_head = nn.Linear(n_features, self.n_rendered_views, bias=True)
+        #     self.heads["renderings_logits"] = self.views_logits_head
 
         # Dimensions for indexing into input and rendered images
         self._input_rgb_dims = [0, 1, 2]
@@ -176,6 +162,26 @@ class PosePredictor(nn.Module):
     @property
     def render_depth_dims(self) -> List[int]:
         return self._render_depth_dims
+
+    def crop_inputs_by_bbox(
+        self,
+        images: torch.Tensor,
+        K: torch.Tensor,
+        boxes_modal: torch.Tensor,
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        bsz = images.shape[0]
+        assert K.shape == (bsz, 3, 3)
+        assert boxes_modal.shape == (bsz, 4)
+        boxes_crop, images_cropped = box_shaped_then_crops(
+            images=images,
+            boxes_modal=boxes_modal,
+            output_size=self.render_size,
+            lamb=1.4,
+        )
+        K_crop = get_K_crop_resize(
+            K=K.clone(), boxes=boxes_crop, orig_size=images.shape[-2:], crop_resize=self.render_size
+        ).detach()
+        return images_cropped, K_crop, boxes_crop
 
     def crop_inputs(
         self,
@@ -320,7 +326,8 @@ class PosePredictor(nn.Module):
         Returns:
             Dict[str, torch.Tensor]: Output of each network head.
         """
-        x = self.backbone(x)
+
+        x = self.feature_extraction(x)
         if x.dim() == 2:
             pass
         elif x.dim() == 4:
@@ -501,6 +508,7 @@ class PosePredictor(nn.Module):
         K: torch.Tensor,
         labels: List[str],
         TCO: torch.Tensor,
+        box_modal: torch.Tensor,
         n_iterations: int = 1,
         random_ambient_light: bool = False,
     ) -> Dict[str, PosePredictorOutput]:
@@ -529,8 +537,8 @@ class PosePredictor(nn.Module):
             tCR = tCR.squeeze(-1)
 
             TCV_O_input = make_TCO_multiview(
-                TCO=TCO_input,
-                tCR=tCR,
+                TCO=TCO_input,  # [bsz, 4, 4]
+                tCR=tCR,  # [bsz, 3]
                 multiview_type=self.multiview_type,
                 n_views=self.n_rendered_views,
                 remove_TCO_rendering=self.remove_TCO_rendering,
@@ -543,8 +551,8 @@ class PosePredictor(nn.Module):
             ] @ tOR.unsqueeze(1).repeat(1, n_views, 1).flatten(0, 1).unsqueeze(-1)
             tCV_R = tCV_R.squeeze(-1).view(bsz, n_views, 3)
 
-            images_crop, K_crop, boxes_rend, boxes_crop = self.crop_inputs(
-                images, K, TCO_input, tCR, labels
+            images_crop, K_crop, boxes_crop = self.crop_inputs_by_bbox(
+                images, K, box_modal
             )
 
             KV_crop = self.compute_crops_multiview(images, K, TCV_O_input, tCV_R, labels)
@@ -564,7 +572,16 @@ class PosePredictor(nn.Module):
                 renders,
                 tCR,
             )
-            x = torch.cat((images_crop, renders), dim=1)
+            img = torch.cat((images_crop, renders), dim=1).reshape(bsz * (n_views + 1), 3, self.render_size[0], self.render_size[1])
+            patch_feat, cls_token = self.feature_extraction(img)
+            cls_token = cls_token.view(bsz, n_views + 1, -1)  # [bsz, n_views+1, n_cls_token_dim]
+            
+            K_encoding = torch.cat([K_crop.unsqueeze(1), KV_crop], dim=1).view(bsz * (n_views + 1), -1)
+
+            T_ = torch.zeros(bsz, 1, 4, 4, device=device, dtype=dtype)
+            pose_encoding = torch.cat([T_, TCV_O_input], dim=1).view(bsz * (n_views + 1), -1)
+
+            z = torch.cat([cls_token, K_encoding], dim=1)
 
             # would expect this to error out
             network_outputs = self.net_forward(x)
@@ -593,7 +610,6 @@ class PosePredictor(nn.Module):
                 K_crop=K_crop,
                 KV_crop=KV_crop,
                 network_outputs=network_outputs,
-                boxes_rend=boxes_rend,
                 boxes_crop=boxes_crop,
                 renderings_logits=renderings_logits,
                 timing_dict=timing_dict,

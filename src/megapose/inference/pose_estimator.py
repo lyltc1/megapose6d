@@ -40,7 +40,7 @@ from megapose.inference.types import (
     PoseEstimatesType,
 )
 from megapose.lib3d.cosypose_ops import TCO_init_from_boxes_autodepth_with_R
-from megapose.training.utils import CudaTimer, SimpleTimer
+from megapose.training.backup_utils import CudaTimer, SimpleTimer
 from megapose.utils import transform_utils
 from megapose.utils.logging import get_logger
 from megapose.utils.tensor_collection import PandasTensorCollection

@@ -26,6 +26,35 @@ from megapose.datasets.pose_dataset import PoseDataset
 # Local Folder
 from .camera_geometry import boxes_from_uv, project_points, project_points_robust
 
+def shape_boxes(obs_boxes, lamb=1.4, r=1.0):
+    """ r is the aspect ratio of the image, width / height """
+    lobs, robs, uobs, dobs = obs_boxes[:, [0]], obs_boxes[:, [2]], obs_boxes[:, [1]], obs_boxes[:, [3]]
+    xc = (lobs + robs) / 2
+    yc = (uobs + dobs) / 2
+    xdists = torch.cat(
+        ((lobs - xc).abs(), (robs - xc).abs()), dim=1
+    )
+    ydists = torch.cat(
+        ((uobs - yc).abs(), (dobs - yc).abs()), dim=1
+    )
+    xdist = xdists.max(dim=1)[0]
+    ydist = ydists.max(dim=1)[0]
+    width = torch.max(xdist, ydist * r) * 2 * lamb
+    height = torch.max(xdist / r, ydist) * 2 * lamb
+    xc, yc = xc.squeeze(-1), yc.squeeze(-1)
+    x1, y1, x2, y2 = xc - width / 2, yc - height / 2, xc + width / 2, yc + height / 2
+    boxes = torch.cat((x1.unsqueeze(1), y1.unsqueeze(1), x2.unsqueeze(1), y2.unsqueeze(1)), dim=1)
+    return boxes
+
+def box_shaped_then_crops(images, box_modal, output_size=None, lamb=1.4):
+    batch_size, _, h, w = images.shape
+    device = images.device
+    if output_size is None:
+        output_size = (h, w)
+    shaped_boxes = shape_boxes(box_modal, lamb=lamb, r=output_size[1] / output_size[0])
+    boxes = torch.cat((torch.arange(batch_size).unsqueeze(1).to(device).float(), shaped_boxes), dim=1)
+    crops = crop_images(images, boxes, output_size=output_size, sampling_ratio=4)
+    return boxes[:, 1:], crops
 
 def deepim_boxes(rend_center_uv, obs_boxes, rend_boxes, lamb=1.4, im_size=(240, 320), clamp=False):
     """

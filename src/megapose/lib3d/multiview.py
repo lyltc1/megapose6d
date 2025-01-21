@@ -29,6 +29,13 @@ from megapose.panda3d_renderer.utils import compute_view_mat
 
 
 def _get_views_TCO_pos_sphere(TCO, tCR, cam_positions_wrt_cam0):
+    """
+    TCO is the transformation matrix from the object coordinate system to the camera coordinate system, and tCR is the coordinate of the Reference Point in the camera coordinate system.
+    Generally, the Reference Point is the center of the object O, so tCR == TCO[:3, -1].
+    This function uses panda3d to set the positions and orientations of the obj and cam, then places them into cam_pointing_to_ref, with the position of cam but oriented towards the reference point.
+    Then, based on cam_pointing_to_ref, multiple cameras are placed. These cameras' positions are relative to cam_pointing_to_ref, and based on the distance norm from cam to the reference point, the position of camera-pointing-to-ref-{n} is set to norm * cam_pointing_to_ref, and they are also oriented towards the reference point.
+    Returns the multi-view camera poses in the GL/bop coordinate system represented in the cam coordinate system TC0_CV. Here, the subscript C0 represents the input camera coordinate system, and CV represents the new multi-view camera coordinate system.
+    """
     TCO = TCO.copy()
     tCR = tCR.copy()
     root = NodePath("root")
@@ -93,6 +100,18 @@ def _get_views_TCO_pos_sphere(TCO, tCR, cam_positions_wrt_cam0):
 
 
 def get_1_view_TCO_pos_front(TCO, tCR):
+    """
+    Returns the transformation matrix of a new camera positioned at the origin of the original camera,
+    but oriented towards the reference position.
+
+    Args:
+        TCO (numpy.ndarray): Transformation matrix of the object in the original camera frame.
+        tCR (numpy.ndarray): Translation vector of the reference position in the original camera frame.
+
+    Returns:
+        numpy.ndarray: Transformation matrix of the new camera in the original camera frame.
+    """
+
     cam_positions_wrt_cam0 = np.array(
         [
             [0, 0, 0],
@@ -102,6 +121,7 @@ def get_1_view_TCO_pos_front(TCO, tCR):
 
 
 def get_3_views_TCO_pos_front(TCO, tCR):
+    """ the three views are the front view, the right view, and the left view """
     cam_positions_wrt_cam0 = np.array(
         [
             [0, 0, 0],
@@ -113,6 +133,12 @@ def get_3_views_TCO_pos_front(TCO, tCR):
 
 
 def get_5_views_TCO_pos_front(TCO, tCR):
+    """
+    Get the positions of five views relative to the original camera position.
+    
+    The five views are the front view, the right view, the left view, the top view, and the bottom view,
+    relative to the original camera position, not relative to the reference point position.
+    """
     cam_positions_wrt_cam0 = np.array(
         [
             [0, 0, 0],
@@ -214,6 +240,18 @@ def make_TCO_multiview(
             else:
                 TC0_CV_ = [np.eye(4)]
             TC0_CV_ += get_3_views_TCO_pos_front(TCO_np[b], tCR_np[b])
+            TC0_CV.append(TC0_CV_)
+        TC0_CV = torch.as_tensor(np.stack(TC0_CV), device=device, dtype=dtype)
+        TCV_O = invert_transform_matrices(TC0_CV) @ TCO.unsqueeze(1)
+
+    elif multiview_type == "TCO+front_5views":
+        TC0_CV = []
+        for b in range(bsz):
+            if remove_TCO_rendering:
+                TC0_CV_ = []
+            else:
+                TC0_CV_ = [np.eye(4)]
+            TC0_CV_ += get_5_views_TCO_pos_front(TCO_np[b], tCR_np[b])
             TC0_CV.append(TC0_CV_)
         TC0_CV = torch.as_tensor(np.stack(TC0_CV), device=device, dtype=dtype)
         TCV_O = invert_transform_matrices(TC0_CV) @ TCO.unsqueeze(1)

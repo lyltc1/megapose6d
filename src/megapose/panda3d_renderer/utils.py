@@ -29,6 +29,9 @@ from megapose.lib3d.transform import Transform
 from megapose.panda3d_renderer.geometry import make_axes, make_box, make_sphere
 
 def compute_view_mat(TWC):
+    """ 
+    Given the transformation matrix TWC in the GL/BOP camera coordinate system, it first converts it to the Panda3D camera coordinate system, then converts it to the p3d data format and returns it. The GL/BOP camera coordinate system has the z-axis pointing along the optical axis, the x-axis pointing to the right, and the y-axis pointing down. The Panda3D camera coordinate system has the y-axis pointing along the optical axis, the x-axis pointing to the right, and the z-axis pointing up. Constructing the p3d data format requires inputting transposed and flattened data.
+    """
     TCCGL = np.array([[1, 0, 0, 0], [0, 0, -1, 0], [0, 1, 0, 0], [0, 0, 0, 1]], dtype=float)
     TCCGL = Transform(TCCGL)
     TWC = Transform(TWC)

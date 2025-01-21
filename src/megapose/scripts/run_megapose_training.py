@@ -49,7 +49,7 @@ from omegaconf import OmegaConf
 from megapose.bop_config import BOP_CONFIG
 from megapose.config import EXP_DIR
 from megapose.training.train_megapose import DatasetConfig, train_megapose
-from megapose.training.training_config import HardwareConfig, TrainingConfig
+from megapose.training.backup_training_config import HardwareConfig, TrainingConfig
 from megapose.utils.logging import get_logger, set_logging_level
 
 logger = get_logger(__name__)
@@ -130,7 +130,7 @@ def make_refiner_cfg(cfg: TrainingConfig) -> TrainingConfig:
 
 
 def make_coarse_cfg(cfg: TrainingConfig) -> TrainingConfig:
-    cfg.hypotheses_init_method = "coarse_classif_multiview_paper"
+    cfg.hypotheses_init_method = "coarse_z_up+auto-depth"
     cfg.n_iterations = 1
     cfg.n_hypotheses = 6
     cfg.n_rendered_views = 1
@@ -261,6 +261,9 @@ def update_cfg_with_config_id(cfg: TrainingConfig, config_id: str) -> TrainingCo
     elif config_id == "coarse-gso_shapenet-6hypothesis":
         cfg = make_coarse_cfg(cfg)
         cfg = train_on_gso_and_shapenet(cfg)
+    elif config_id == "coarse-gso-6hypothesis":
+        cfg = make_coarse_cfg(cfg)
+        cfg = train_on_gso_and_shapenet(cfg, shapenet_obj_ds_name=None, gso_obj_ds_name="gso_940")
 
     else:
         raise ValueError("Unknown config")

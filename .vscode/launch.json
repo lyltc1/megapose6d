@@ -51,6 +51,15 @@
             "program": "run_dupe_training.py",
             "console": "integratedTerminal",
             "args": "config_id=refiner-gso-4views-normals overfit=True debug=True",
+        },
+        {
+            "name": "megapose_coarse_training",
+            "type": "debugpy",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/src/megapose/scripts/",
+            "program": "run_megapose_training.py",
+            "console": "integratedTerminal",
+            "args": "config_id=coarse-gso-6hypothesis overfit=True debug=True",
         }
     ]
 }

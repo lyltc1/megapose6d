@@ -47,9 +47,9 @@ from megapose.datasets.web_scene_dataset import IterableWebSceneDataset, WebScen
 from megapose.lib3d.rigid_mesh_database import MeshDataBase
 from megapose.panda3d_renderer.panda3d_batch_renderer import Panda3dBatchRenderer
 from megapose.training.megapose_forward_loss import megapose_forward_loss
-from megapose.training.pose_models_cfg import check_update_config, create_model_pose
+from megapose.training.backup_pose_models_cfg import check_update_config, create_model_pose
 from megapose.training.backup_training_config import DatasetConfig, TrainingConfig
-from megapose.training.utils import (
+from megapose.training.backup_utils import (
     CudaTimer,
     make_lr_ratio_function,
     make_optimizer,

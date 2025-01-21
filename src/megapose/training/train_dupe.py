@@ -32,7 +32,7 @@ from megapose.panda3d_renderer.panda3d_batch_renderer import Panda3dBatchRendere
 from megapose.training.megapose_forward_loss import megapose_forward_loss
 from megapose.training.pose_models_cfg import check_update_config, create_model_pose
 from megapose.training.training_config import DatasetConfig, TrainingConfig
-from megapose.training.utils import (
+from megapose.training.backup_utils import (
     CudaTimer,
     make_lr_ratio_function,
     make_optimizer,
@@ -141,10 +141,10 @@ def train_dupe(cfg: TrainingConfig) -> None:
     # Datasets
     ds_train = PoseDataset(
         scene_ds_train,
+        min_area=cfg.min_area,
         apply_rgb_augmentation=cfg.rgb_augmentation,
         apply_background_augmentation=cfg.background_augmentation,
         apply_depth_augmentation=cfg.depth_augmentation,
-        min_area=cfg.min_area,
         depth_augmentation_level=cfg.depth_augmentation_level,
         keep_labels_set=this_rank_labels,
     )

@@ -80,7 +80,8 @@ conda config --add channels anaconda
 conda config --add channels defaults
 conda install -c conda-forge firefox geckodriver
 conda install -y pip wget python-wget joblib ipython ipykernel jupyterlab notebook nb_conda_kernels  pinocchio rclone pillow ipywidgets selenium geckodriver firefox
-pip install jupyter_contrib_nbextensions meshcat selenium omegaconf simplejson line_profiler opencv-python torchnet tqdm lxml transforms3d panda3d joblib xarray pandas matplotlib bokeh==2.4.3 plyfile trimesh ipdb panda3d-gltf colorama pyyaml ipykernel scipy pypng h5py seaborn kornia pyarrow dt_apriltags open3d structlog imageio progressbar pyyaml psutil webdataset opencv-contrib-python roma torchgeometry  
+pip install jupyter_contrib_nbextensions meshcat selenium omegaconf simplejson line_profiler opencv-python torchnet tqdm lxml transforms3d panda3d joblib xarray pandas matplotlib bokeh==2.4.3 plyfile trimesh ipdb panda3d-gltf colorama pyyaml ipykernel scipy pypng h5py seaborn kornia pyarrow dt_apriltags open3d structlog imageio progressbar pyyaml psutil webdataset opencv-contrib-python roma torchgeometry 
+pip install timm einops gorilla
 pip install -e .
 ```
 Compiling PointNet2

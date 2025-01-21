@@ -86,7 +86,7 @@ def make_refiner_cfg(cfg: TrainingConfig) -> TrainingConfig:
     cfg.loss_alpha_pose = 1.0
     cfg.predict_rendered_views_logits = False
     cfg.render_normals = False
-    cfg.multiview_type = "TCO+front_3views"
+    cfg.multiview_type = "TCO+front_5views"
     cfg.n_rendered_views = 4
     cfg.n_iterations = 3
     return cfg
@@ -224,6 +224,9 @@ def update_cfg_with_config_id(cfg: TrainingConfig, config_id: str) -> TrainingCo
     elif config_id == "coarse-gso_shapenet-6hypothesis":
         cfg = make_coarse_cfg(cfg)
         cfg = train_on_gso_and_shapenet(cfg)
+    elif config_id == "coarse-gso-6hypothesis":
+        cfg = make_coarse_cfg(cfg)
+        cfg = train_on_gso_and_shapenet(cfg, shapenet_obj_ds_name=None, gso_obj_ds_name="gso_940")
 
     else:
         raise ValueError("Unknown config")
