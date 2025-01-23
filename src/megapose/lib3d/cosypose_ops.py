@@ -232,8 +232,8 @@ def TCO_init_from_boxes_zup_autodepth(boxes_2d, model_points_3d, K):
         .to(boxes_2d.device)
         .repeat(bsz, 1, 1)
     )
-    bb_xy_centers = (boxes_2d[:, [0, 1]] + boxes_2d[:, [2, 3]]) / 2
-    xy_init = ((bb_xy_centers - cxcy) * z_guess) / fxfy
+    bb_xy_centers = (boxes_2d[:, [0, 1]] + boxes_2d[:, [2, 3]]) / 2  # [bsz, 2]
+    xy_init = ((bb_xy_centers - cxcy) * z_guess) / fxfy  # [bsz, 2]
     TCO[:, :2, 3] = xy_init
 
     C_pts_3d = transform_pts(TCO, model_points_3d)
@@ -257,78 +257,6 @@ def TCO_init_from_boxes_zup_autodepth(boxes_2d, model_points_3d, K):
     TCO[:, :2, 3] = xy_init
     TCO[:, 2, 3] = z.flatten()
     return TCO
-
-
-def TCO_init_from_boxes_v3(layer, boxes, K):
-    # TODO: Clean these 2 functions
-    # MegaPose
-    from megapose.math_utils.meshes import get_T_offset
-
-    bsz = len(boxes)
-    assert len(K) == bsz
-    pts = layer(layer.joints_default.unsqueeze(0)).repeat(bsz, 1, 1)
-    T_offset = get_T_offset(pts)
-    pts = transform_pts(invert_transform_matrices(T_offset), pts)
-    z = (
-        torch.as_tensor((1.0, 1.0))
-        .mean()
-        .unsqueeze(0)
-        .unsqueeze(0)
-        .repeat(bsz, 1)
-        .to(boxes.device)
-        .to(boxes.dtype)
-    )
-    TCO = _TCO_init_from_boxes_v2(z, boxes, K)
-    pts2d = project_points(pts, K, TCO)
-    deltax = pts2d[..., 0].max() - pts2d[..., 0].min()
-    deltay = pts2d[..., 1].max() - pts2d[..., 1].min()
-
-    bb_deltax = boxes[:, 2] - boxes[:, 0]
-    bb_deltay = boxes[:, 3] - boxes[:, 1]
-
-    ratio_x = deltax / bb_deltax
-    ratio_y = deltay / bb_deltay
-
-    z2 = z * (ratio_y.unsqueeze(1) + ratio_x.unsqueeze(1)) / 2
-    TCO = _TCO_init_from_boxes_v2(z2, boxes, K)
-    return TCO
-
-
-def init_K_TCO_from_boxes(boxes_2d, model_points_3d, z_guess, resolution):
-    # z_guess: float, typically 1.0
-    # resolution: input resolution
-    device = boxes_2d.device
-    H, W = min(resolution), max(resolution)
-    bsz = boxes_2d.shape[0]
-
-    z = torch.as_tensor(z_guess).unsqueeze(0).unsqueeze(0).repeat(bsz, 1).to(device).float()
-    TCO = torch.eye(4).unsqueeze(0).to(torch.float).to(device).repeat(bsz, 1, 1)
-    TCO[:, 2, 3] = z.flatten()
-
-    C_pts_3d = transform_pts(TCO, model_points_3d)
-    deltax_3d = C_pts_3d[:, :, 0].max(dim=1).values - C_pts_3d[:, :, 0].min(dim=1).values
-    deltay_3d = C_pts_3d[:, :, 1].max(dim=1).values - C_pts_3d[:, :, 1].min(dim=1).values
-
-    bb_deltax = boxes_2d[:, 2] - boxes_2d[:, 0]
-    bb_deltay = boxes_2d[:, 3] - boxes_2d[:, 1]
-
-    f_from_dx = bb_deltax * z_guess / deltax_3d
-    f_from_dy = bb_deltay * z_guess / deltay_3d
-    f = f_from_dy
-
-    K = torch.eye(3, dtype=torch.float, device=device).unsqueeze(0).repeat(bsz, 1, 1)
-    K[:, 0, 0] = f
-    K[:, 1, 1] = f
-    K[:, 0, 2] = W / 2
-    K[:, 1, 2] = H / 2
-
-    bb_xy_centers = (boxes_2d[:, [0, 1]] + boxes_2d[:, [2, 3]]) / 2
-    fxfy = K[:, [0, 1], [0, 1]]
-    cxcy = K[:, [0, 1], [2, 2]]
-    xy_init = ((bb_xy_centers - cxcy) * z_guess) / fxfy
-    TCO[:, :2, 3] = xy_init
-    return K, TCO
-
 
 def TCO_init_from_boxes_zup(z_range, boxes, K):
     assert len(z_range) == 2

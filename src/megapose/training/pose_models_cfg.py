@@ -19,13 +19,10 @@ limitations under the License.
 from typing import Union
 
 # MegaPose
-# Backbones
-import megapose.models.torchvision_resnet as models
 from megapose.lib3d.rigid_mesh_database import BatchedMeshes
 
 # Pose models
 from megapose.models.pose_rigid import PosePredictor
-from megapose.models.wide_resnet import WideResNet18, WideResNet34
 from megapose.panda3d_renderer.panda3d_batch_renderer import Panda3dBatchRenderer
 from megapose.training.training_config import TrainingConfig
 from megapose.utils.logging import get_logger
@@ -35,55 +32,6 @@ logger = get_logger(__name__)
 
 def check_update_config(cfg: TrainingConfig) -> TrainingConfig:
     """Useful for loading models previously trained with different configurations."""
-
-    cfg.is_coarse_compat = False
-    # Detect old coarse model definition
-    if hasattr(cfg, "input_strategy") and cfg.input_strategy == "input=obs+one_render":
-        cfg.is_coarse_compat = True
-        cfg.n_rendered_views = 1
-        cfg.multiview_type = "1view_TCO"
-        cfg.predict_rendered_views_logits = True
-        cfg.remove_TCO_rendering = True
-        cfg.predict_pose_update = False
-
-    if cfg.multiview_type == "front_3views":
-        cfg.multiview_type = "TCO+front_3views"
-    if cfg.multiview_type == "front_5views":
-        cfg.multiview_type = "TCO+front_5views"
-    if cfg.multiview_type == "front_1view":
-        cfg.multiview_type = "TCO+front_1view"
-
-    if not hasattr(cfg, "predict_pose_update"):
-        cfg.predict_pose_update = True
-
-    if not hasattr(cfg, "remove_TCO_rendering"):
-        cfg.remove_TCO_rendering = False
-    if not hasattr(cfg, "predict_rendered_views_logits"):
-        cfg.predict_rendered_views_logits = False
-    if "n_rendered_views" not in cfg:
-        if "n_views" in cfg:
-            cfg.n_rendered_views = cfg.n_views
-            del cfg.n_views
-        else:
-            cfg.n_rendered_views = 1
-
-    if "render_normals" not in cfg:
-        cfg.render_normals = False
-    if "render_depth" not in cfg:
-        cfg.render_depth = False
-    if "input_depth" not in cfg:
-        cfg.input_depth = False
-    if "multiview_type" not in cfg:
-        cfg.multiview_type = "TCO"
-        assert not cfg.remove_TCO_rendering
-    if not "views_inplane_rotation" not in cfg:
-        cfg.views_inplane_rotations = False
-    if "depth_augmentation" not in cfg:
-        cfg.depth_normalization_type = "tCR_scale"
-
-    if "renderer" not in cfg:
-        logger.info("Renderer is now Panda3D by default.")
-        cfg.renderer = "panda3d"
     return cfg
 
 
@@ -98,7 +46,6 @@ def create_model_pose(
         renderer=renderer,
         mesh_db=mesh_db,
         n_rendered_views=cfg.n_rendered_views,
-        views_inplane_rotations=cfg.views_inplane_rotations,
         multiview_type=cfg.multiview_type,
         render_normals=cfg.render_normals,
         render_depth=cfg.render_depth,

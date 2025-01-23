@@ -74,24 +74,22 @@ class PosePredictor(nn.Module):
         renderer: Panda3dBatchRenderer,
         mesh_db: MeshDataBase,
         multiview_type: str = "front_3views",
-        views_inplane_rotations: bool = False,
         remove_TCO_rendering: bool = False,
         predict_pose_update: bool = True,
         predict_rendered_views_logits: bool = False,
         render_normals: bool = False,
         n_rendered_views: int = 1,
-        input_depth: bool = False,
-        render_depth: bool = False,
+        input_depth: bool = True,
+        render_depth: bool = True,
         depth_normalization_type: Optional[str] = None,
     ):
         super().__init__()
 
-        self.render_size = (224, 224)
+        self.render_size = (256, 256)
         self.renderer = renderer
         self.n_rendered_views = n_rendered_views
         self.input_depth = input_depth
         self.multiview_type = multiview_type
-        self.views_inplane_rotations = views_inplane_rotations
         self.render_normals = render_normals
         self.render_depth = render_depth
         self.depth_normalization_type = depth_normalization_type
@@ -135,6 +133,7 @@ class PosePredictor(nn.Module):
             self._render_depth_dims = []
 
         # rgb only --> 3
+        # rgb + depth --> 4
         # rgb + normal --> 6
         # rgb + normal + depth --> 7
         self._n_single_render_channels = (
@@ -572,51 +571,95 @@ class PosePredictor(nn.Module):
                 renders,
                 tCR,
             )
-            img = torch.cat((images_crop, renders), dim=1).reshape(bsz * (n_views + 1), 3, self.render_size[0], self.render_size[1])
-            patch_feat, cls_token = self.feature_extraction(img)
-            cls_token = cls_token.view(bsz, n_views + 1, -1)  # [bsz, n_views+1, n_cls_token_dim]
-            
-            K_encoding = torch.cat([K_crop.unsqueeze(1), KV_crop], dim=1).view(bsz * (n_views + 1), -1)
+            make_visualization = True
+            if make_visualization:
+                from megapose.visualization.bokeh_plotter import BokehPlotter
+                from bokeh.io import output_file, show, curdoc
+                from bokeh.layouts import gridplot
+                plotter = BokehPlotter(is_notebook=False)
+                grid = []
+                batch_size = images_crop.shape[0]
+                renders_ = renders.view(
+                    batch_size, self.n_rendered_views, renders.shape[1] // self.n_rendered_views, *renders.shape[-2:]
+                    )
+                for batch_idx in range(batch_size):
+                    row = []
+                    f = plotter.plot_image(images_crop[batch_idx])
+                    f.title.text = "images_crop"
+                    row.append(f)
 
-            T_ = torch.zeros(bsz, 1, 4, 4, device=device, dtype=dtype)
-            pose_encoding = torch.cat([T_, TCV_O_input], dim=1).view(bsz * (n_views + 1), -1)
+                    for render_idx in range(self.n_rendered_views):
+                        f = plotter.plot_image(renders_[batch_idx, render_idx, :3])
+                        f.title.text = f"renders_{render_idx}"
+                        row.append(f)
+                    grid.append(row)
+                plot = gridplot(grid, toolbar_location=None)
+                output_file("hypotheses.html")
+                doc = curdoc()
+                doc.clear()
+                doc.add_root(plot)
+                show(plot)
 
-            z = torch.cat([cls_token, K_encoding], dim=1)
-
-            # would expect this to error out
-            network_outputs = self.net_forward(x)
-            if self.predict_pose_update:
-                TCO_output = self.update_pose(TCO_input, K_crop, network_outputs["pose"], tCR)
-            else:
-                TCO_output = TCO_input.detach().clone()
-
-            if self.predict_rendered_views_logits:
-                renderings_logits = network_outputs["renderings_logits"]
-                assert not self.predict_pose_update
-            else:
-                renderings_logits = torch.empty(
-                    bsz, self.n_rendered_views, dtype=dtype, device=device
-                )
 
             outputs[f"iteration={n+1}"] = PosePredictorOutput(
                 renders=renders,
                 images_crop=images_crop,
                 TCO_input=TCO_input,
-                TCO_output=TCO_output,
                 TCV_O_input=TCV_O_input,
                 tCR=tCR,
                 labels=labels,
                 K=K,
                 K_crop=K_crop,
                 KV_crop=KV_crop,
-                network_outputs=network_outputs,
                 boxes_crop=boxes_crop,
-                renderings_logits=renderings_logits,
                 timing_dict=timing_dict,
             )
-            if self.debug:
-                self.debug_data.output = outputs[f"iteration={n+1}"]
-            TCO_input = TCO_output
+
+            # img = torch.cat((images_crop, renders), dim=1).reshape(bsz * (n_views + 1), 3, self.render_size[0], self.render_size[1])
+            # patch_feat, cls_token = self.feature_extraction(img)
+            # cls_token = cls_token.view(bsz, n_views + 1, -1)  # [bsz, n_views+1, n_cls_token_dim]
+            
+            # K_encoding = torch.cat([K_crop.unsqueeze(1), KV_crop], dim=1).view(bsz * (n_views + 1), -1)
+
+            # T_ = torch.zeros(bsz, 1, 4, 4, device=device, dtype=dtype)
+            # pose_encoding = torch.cat([T_, TCV_O_input], dim=1).view(bsz * (n_views + 1), -1)
+
+            # z = torch.cat([cls_token, K_encoding], dim=1)
+
+            # # would expect this to error out
+            # network_outputs = self.net_forward(x)
+            # if self.predict_pose_update:
+            #     TCO_output = self.update_pose(TCO_input, K_crop, network_outputs["pose"], tCR)
+            # else:
+            #     TCO_output = TCO_input.detach().clone()
+
+            # if self.predict_rendered_views_logits:
+            #     renderings_logits = network_outputs["renderings_logits"]
+            #     assert not self.predict_pose_update
+            # else:
+            #     renderings_logits = torch.empty(
+            #         bsz, self.n_rendered_views, dtype=dtype, device=device
+            #     )
+
+            # outputs[f"iteration={n+1}"] = PosePredictorOutput(
+            #     renders=renders,
+            #     images_crop=images_crop,
+            #     TCO_input=TCO_input,
+            #     TCO_output=TCO_output,
+            #     TCV_O_input=TCV_O_input,
+            #     tCR=tCR,
+            #     labels=labels,
+            #     K=K,
+            #     K_crop=K_crop,
+            #     KV_crop=KV_crop,
+            #     network_outputs=network_outputs,
+            #     boxes_crop=boxes_crop,
+            #     renderings_logits=renderings_logits,
+            #     timing_dict=timing_dict,
+            # )
+            # if self.debug:
+            #     self.debug_data.output = outputs[f"iteration={n+1}"]
+            # TCO_input = TCO_output
         return outputs
 
     def forward_coarse_tensor(

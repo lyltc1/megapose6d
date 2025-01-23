@@ -186,3 +186,28 @@ def compute_rotation_matrix_from_quaternions(quats):
     quats = quats / torch.norm(quats, p=2, dim=-1, keepdim=True)
     mat = quat2mat(quats)[:, :3, :3]
     return mat
+
+
+def random_rotation_matrix(
+        shape: torch.Size,
+        device: torch.device = torch.device('cuda')
+) -> torch.Tensor:
+    rand = torch.rand(*shape, 3, device=device)
+    r1 = torch.sqrt(1.0 - rand[..., 0])
+    r2 = torch.sqrt(rand[..., 0])
+    pi2 = np.pi * 2
+    t1 = pi2 * rand[..., 1]
+    t2 = pi2 * rand[..., 2]
+    q = torch.stack([r1 * torch.sin(t1),
+                     r1 * torch.cos(t1),
+                     r2 * torch.sin(t2),
+                     r2 * torch.cos(t2)], dim=-1)
+    n = torch.einsum('...i,...i', q, q)
+    q = q * torch.sqrt(2.0 / n[..., None])
+    q = torch.einsum('...i,...j->...ij', q, q)
+    return torch.stack([
+                1.0 - q[..., 2, 2] - q[..., 3, 3], q[..., 1, 2] - q[..., 3, 0], q[..., 1, 3] + q[..., 2, 0],
+                q[..., 1, 2] + q[..., 3, 0], 1.0 - q[..., 1, 1] - q[..., 3, 3], q[..., 2, 3] - q[..., 1, 0],
+                q[..., 1, 3] - q[..., 2, 0], q[..., 2, 3] + q[..., 1, 0], 1.0 - q[..., 1, 1] - q[..., 2, 2],
+            ], dim=-1).view(*shape, 3, 3)
+    

@@ -29,7 +29,7 @@ from megapose.datasets.scene_dataset import (
 from megapose.datasets.web_scene_dataset import IterableWebSceneDataset, WebSceneDataset
 from megapose.lib3d.rigid_mesh_database import MeshDataBase
 from megapose.panda3d_renderer.panda3d_batch_renderer import Panda3dBatchRenderer
-from megapose.training.megapose_forward_loss import megapose_forward_loss
+from megapose.training.dupe_forward_loss import dupe_forward_loss
 from megapose.training.pose_models_cfg import check_update_config, create_model_pose
 from megapose.training.training_config import DatasetConfig, TrainingConfig
 from megapose.training.backup_utils import (
@@ -257,7 +257,7 @@ def train_dupe(cfg: TrainingConfig) -> None:
             n_iterations = min(epoch // cfg.add_iteration_epoch_interval + 1, cfg.n_iterations)
 
         forward_loss_fn = functools.partial(
-            megapose_forward_loss, model=model, cfg=cfg, n_iterations=n_iterations, mesh_db=mesh_db
+            dupe_forward_loss, model=model, cfg=cfg, n_iterations=n_iterations, mesh_db=mesh_db
         )
 
         def train() -> None:

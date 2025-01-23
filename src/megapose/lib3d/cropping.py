@@ -46,12 +46,12 @@ def shape_boxes(obs_boxes, lamb=1.4, r=1.0):
     boxes = torch.cat((x1.unsqueeze(1), y1.unsqueeze(1), x2.unsqueeze(1), y2.unsqueeze(1)), dim=1)
     return boxes
 
-def box_shaped_then_crops(images, box_modal, output_size=None, lamb=1.4):
+def box_shaped_then_crops(images, boxes_modal, output_size=None, lamb=1.4):
     batch_size, _, h, w = images.shape
     device = images.device
     if output_size is None:
         output_size = (h, w)
-    shaped_boxes = shape_boxes(box_modal, lamb=lamb, r=output_size[1] / output_size[0])
+    shaped_boxes = shape_boxes(boxes_modal, lamb=lamb, r=output_size[1] / output_size[0])
     boxes = torch.cat((torch.arange(batch_size).unsqueeze(1).to(device).float(), shaped_boxes), dim=1)
     crops = crop_images(images, boxes, output_size=output_size, sampling_ratio=4)
     return boxes[:, 1:], crops

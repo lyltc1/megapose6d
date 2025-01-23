@@ -22,7 +22,7 @@ from typing import Any, Dict
 import numpy as np
 import torch
 import torchnet
-from bokeh.io import output_file, show, curdoc
+from bokeh.io import curdoc
 from bokeh.layouts import gridplot
 from torch import nn
 
@@ -40,7 +40,7 @@ from megapose.lib3d.rigid_mesh_database import BatchedMeshes
 from megapose.lib3d.transform_ops import add_noise, invert_transform_matrices
 from megapose.models.pose_rigid import PosePredictor
 from megapose.training.training_config import TrainingConfig
-from megapose.training.backup_utils import cast, cast_images
+from megapose.training.utils import cast, cast_images
 from megapose.visualization.bokeh_plotter import BokehPlotter
 
 
@@ -260,7 +260,7 @@ def megapose_forward_loss(
 
         TCV0_O = TCV_O[..., 0, :4, :4]
         TCV0_R = TCV_O[..., 0, :4, :4].clone()
-        TCV0_R[..., :3, [-1]] = tCR.unsqueeze(-1).to(TCV0_R.dtype)
+        TCV0_R[..., :3, [-1]] = tCR.unsqueeze(-1)
         TO_R = invert_transform_matrices(TCV0_O) @ TCV0_R
 
         TCV_R = TCV_O.clone()
@@ -271,9 +271,6 @@ def megapose_forward_loss(
         for batch_idx in range(min(cfg.vis_batch_size, batch_size)):
             for view_idx in range(n_views):
                 row = []
-                f = plotter.plot_image(images[batch_idx])
-                f.title.text = "ori_image"
-                row.append(f)
                 for init_idx in range(n_hypotheses):
                     image_crop_ = images_crop[batch_idx, init_idx]
                     render_ = renders[batch_idx, init_idx, view_idx]
@@ -315,16 +312,16 @@ def megapose_forward_loss(
 
                 grid.append(row)
 
+        doc = curdoc()
         sizing_mode = "scale_width" if is_notebook else None
         plot = gridplot(grid, toolbar_location=None, sizing_mode=sizing_mode)
         if is_notebook:
-            show(plot)
+            meters["bokeh_doc_hypotheses"] = plot
+            meters["bokeh_grid"] = grid
         else:
-            output_file("hypotheses.html")
-            doc = curdoc()
-            doc.clear()
             doc.add_root(plot)
-            show(plot)
+            meters["bokeh_doc_hypotheses"] = doc.to_json()
+            doc.clear()
 
     if debug_dict is not None:
         debug_dict["outputs"] = outputs

@@ -27,19 +27,19 @@ class Denoiser(nn.Module):
         )
 
         self._first_xy = nn.Linear(first_dim, cfg.d_model)
-        self._trunk_xy = TransformerEncoderWrapper(cfg.transformer)
+        self._trunk_xy = TransformerEncoderWrapper()
         self._last_xy = MLP(
             cfg.d_model, [cfg.mlp_hidden_dim, 2], norm_layer=nn.LayerNorm
         )
 
         self._first_z = nn.Linear(first_dim, cfg.d_model)
-        self._trunk_z = TransformerEncoderWrapper(cfg.transformer)
+        self._trunk_z = TransformerEncoderWrapper()
         self._last_z = MLP(
             cfg.d_model, [cfg.mlp_hidden_dim, 1], norm_layer=nn.LayerNorm
         )
 
         self._first_r = nn.Linear(first_dim, cfg.d_model)
-        self._trunk_r = TransformerEncoderWrapper(cfg.transformer)
+        self._trunk_r = TransformerEncoderWrapper()
         self._last_r = MLP(
             cfg.d_model, [cfg.mlp_hidden_dim, 4], norm_layer=nn.LayerNorm
         )
@@ -70,16 +70,16 @@ class Denoiser(nn.Module):
         output_r = self._last_r(self._trunk_r(self._first_r(feed_feats)))
         return torch.cat([output_xy, output_z, output_r], dim=-1)[:, 0, :]
 
-def TransformerEncoderWrapper(cfg):
+def TransformerEncoderWrapper():
     encoder_layer = torch.nn.TransformerEncoderLayer(
-        d_model=cfg.d_model,
-        nhead=cfg.nhead,
-        dim_feedforward=cfg.dim_feedforward,
-        dropout=cfg.dropout,
-        batch_first=cfg.batch_first,
-        norm_first=cfg.norm_first,
+        d_model=512,
+        nhead=4,
+        dim_feedforward=1024,
+        dropout=0.1,
+        batch_first=True,
+        norm_first=True,
     )
-    _trunk = torch.nn.TransformerEncoder(encoder_layer, cfg.num_encoder_layers)
+    _trunk = torch.nn.TransformerEncoder(encoder_layer, 8)
     return _trunk
 
 

@@ -50,7 +50,7 @@
             "cwd": "${workspaceFolder}/src/megapose/scripts/",
             "program": "run_dupe_training.py",
             "console": "integratedTerminal",
-            "args": "config_id=refiner-gso-4views-normals overfit=True debug=True",
+            "args": "config_id=refiner-gso-depths overfit=True debug=True",
         },
         {
             "name": "megapose_coarse_training",

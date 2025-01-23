@@ -78,16 +78,15 @@ def train_on_gso(
     cfg.n_symmetries_batch = 1
     return cfg
 
-
 def make_refiner_cfg(cfg: TrainingConfig) -> TrainingConfig:
-    cfg.hypotheses_init_method = "refiner_gt+noise"
+    cfg.hypotheses_init_method = "SO3_gird_and_gt_noise"
     cfg.n_hypotheses = 1
     cfg.predict_pose_update = True
     cfg.loss_alpha_pose = 1.0
     cfg.predict_rendered_views_logits = False
     cfg.render_normals = False
     cfg.multiview_type = "TCO+front_5views"
-    cfg.n_rendered_views = 4
+    cfg.n_rendered_views = 6
     cfg.n_iterations = 3
     return cfg
 
@@ -141,92 +140,98 @@ def update_cfg_with_config_id(cfg: TrainingConfig, config_id: str) -> TrainingCo
     #######
 
     # Views ablation
-    if config_id == "refiner-gso_shapenet-1view-normals":
-        cfg = make_refiner_cfg(cfg)
-        cfg = train_on_gso_and_shapenet(cfg)
-        cfg.n_rendered_views = 1
-        cfg.multiview_type = "TCO"
-    elif config_id == "refiner-gso_shapenet-2views-normals":
-        cfg = make_refiner_cfg(cfg)
-        cfg = train_on_gso_and_shapenet(cfg)
-        cfg.multiview_type = "TCO+front_1view"
-        cfg.n_rendered_views = 2
-    elif config_id == "refiner-gso_shapenet-4views-normals":
-        cfg = make_refiner_cfg(cfg)
-        cfg = train_on_gso_and_shapenet(cfg)
-    elif config_id == "refiner-gso_shapenet-4views-normals-depth":
+    if config_id == "refiner-gso-depths":
         cfg = make_refiner_cfg(cfg)
         cfg = enable_depth_in_cfg(cfg)
-        cfg = train_on_gso_and_shapenet(cfg)
-    elif config_id == "refiner-gso_shapenet-4views-no_normals":
-        cfg = make_refiner_cfg(cfg)
-        cfg = train_on_gso_and_shapenet(cfg)
-        cfg.render_normals = False
-
-    # Data ablation
-    elif config_id == "refiner-gso_shapenet-4views-normals-objects50p":
-        cfg = make_refiner_cfg(cfg)
-        cfg = train_on_gso_and_shapenet(
-            cfg, shapenet_obj_ds_name="shapenet_10mb_10k", gso_obj_ds_name="gso_500"
-        )
-    elif config_id == "refiner-gso_shapenet-4views-normals-objects25p":
-        cfg = make_refiner_cfg(cfg)
-        cfg = train_on_gso_and_shapenet(
-            cfg, shapenet_obj_ds_name="shapenet_10mb_2k", gso_obj_ds_name="gso_250"
-        )
-    elif config_id == "refiner-gso_shapenet-4views-normals-objects10p":
-        cfg = make_refiner_cfg(cfg)
-        cfg = train_on_gso_and_shapenet(
-            cfg, shapenet_obj_ds_name="shapenet_10mb_1k", gso_obj_ds_name="gso_100"
-        )
-    elif config_id == "refiner-gso_shapenet-4views-normals-objects1p":
-        cfg = make_refiner_cfg(cfg)
-        cfg = train_on_gso_and_shapenet(
-            cfg, shapenet_obj_ds_name="shapenet_10mb_100", gso_obj_ds_name="gso_10"
-        )
-
-    elif config_id == "refiner-gso-4views-normals":
-        cfg = make_refiner_cfg(cfg)
         cfg = train_on_gso_and_shapenet(cfg, shapenet_obj_ds_name=None, gso_obj_ds_name="gso_940")
-    elif config_id == "refiner-shapenet-4views-normals":
-        cfg = make_refiner_cfg(cfg)
-        cfg = train_on_gso_and_shapenet(
-            cfg, shapenet_obj_ds_name="shapenet_10mb_20k", gso_obj_ds_name=None
-        )
-    elif config_id == "refiner-gso_shapenet_nomodelnet-4views-normals":
-        cfg = make_refiner_cfg(cfg)
-        cfg = train_on_gso_and_shapenet(
-            cfg,
-            shapenet_obj_ds_name="shapenet_10mb_20k",
-            gso_obj_ds_name=None,
-            remove_modelnet=True,
-        )
 
-    elif config_id == "refiner-all_bop-4views-normals":
-        cfg = make_refiner_cfg(cfg)
-        cfg = train_on_bop_pbr_datasets(cfg, use_webdataset=False)
+    # if config_id == "refiner-gso_shapenet-1view-normals":
+    #     cfg = make_refiner_cfg(cfg)
+    #     cfg = train_on_gso_and_shapenet(cfg)
+    #     cfg.n_rendered_views = 1
+    #     cfg.multiview_type = "TCO"
+    # elif config_id == "refiner-gso_shapenet-2views-normals":
+    #     cfg = make_refiner_cfg(cfg)
+    #     cfg = train_on_gso_and_shapenet(cfg)
+    #     cfg.multiview_type = "TCO+front_1view"
+    #     cfg.n_rendered_views = 2
+    # elif config_id == "refiner-gso_shapenet-4views-normals":
+    #     cfg = make_refiner_cfg(cfg)
+    #     cfg = train_on_gso_and_shapenet(cfg)
+    # elif config_id == "refiner-gso_shapenet-4views-normals-depth":
+    #     cfg = make_refiner_cfg(cfg)
+    #     cfg = enable_depth_in_cfg(cfg)
+    #     cfg = train_on_gso_and_shapenet(cfg)
+    # elif config_id == "refiner-gso_shapenet-4views-no_normals":
+    #     cfg = make_refiner_cfg(cfg)
+    #     cfg = train_on_gso_and_shapenet(cfg)
+    #     cfg.render_normals = False
 
-    elif config_id == "refiner-all_bop-4views-normals-depth":
-        cfg = make_refiner_cfg(cfg)
-        cfg = train_on_bop_pbr_datasets(cfg, use_webdataset=False)
-        cfg = enable_depth_in_cfg(cfg)
+    # # Data ablation
+    # elif config_id == "refiner-gso_shapenet-4views-normals-objects50p":
+    #     cfg = make_refiner_cfg(cfg)
+    #     cfg = train_on_gso_and_shapenet(
+    #         cfg, shapenet_obj_ds_name="shapenet_10mb_10k", gso_obj_ds_name="gso_500"
+    #     )
+    # elif config_id == "refiner-gso_shapenet-4views-normals-objects25p":
+    #     cfg = make_refiner_cfg(cfg)
+    #     cfg = train_on_gso_and_shapenet(
+    #         cfg, shapenet_obj_ds_name="shapenet_10mb_2k", gso_obj_ds_name="gso_250"
+    #     )
+    # elif config_id == "refiner-gso_shapenet-4views-normals-objects10p":
+    #     cfg = make_refiner_cfg(cfg)
+    #     cfg = train_on_gso_and_shapenet(
+    #         cfg, shapenet_obj_ds_name="shapenet_10mb_1k", gso_obj_ds_name="gso_100"
+    #     )
+    # elif config_id == "refiner-gso_shapenet-4views-normals-objects1p":
+    #     cfg = make_refiner_cfg(cfg)
+    #     cfg = train_on_gso_and_shapenet(
+    #         cfg, shapenet_obj_ds_name="shapenet_10mb_100", gso_obj_ds_name="gso_10"
+    #     )
 
-    # Modelnet config
-    elif config_id == "refiner-gso_shapenet_nomodelnet-4views-normals":
-        cfg = make_refiner_cfg(cfg)
-        cfg = train_on_gso_and_shapenet(cfg)
-    elif config_id == "refiner-gso_shapenet_nomodelnet-4views-normals-depth":
-        cfg = make_refiner_cfg(cfg)
-        cfg = train_on_gso_and_shapenet(cfg, remove_modelnet=True)
-        cfg = enable_depth_in_cfg(cfg)
+    # elif config_id == "refiner-gso-4views-normals":
+    #     cfg = make_refiner_cfg(cfg)
+    #     cfg = train_on_gso_and_shapenet(cfg, shapenet_obj_ds_name=None, gso_obj_ds_name="gso_940")
 
-    # Coarse
-    elif config_id == "coarse-gso_shapenet-6hypothesis":
-        cfg = make_coarse_cfg(cfg)
-        cfg = train_on_gso_and_shapenet(cfg)
-    elif config_id == "coarse-gso-6hypothesis":
-        cfg = make_coarse_cfg(cfg)
-        cfg = train_on_gso_and_shapenet(cfg, shapenet_obj_ds_name=None, gso_obj_ds_name="gso_940")
+    # elif config_id == "refiner-shapenet-4views-normals":
+    #     cfg = make_refiner_cfg(cfg)
+    #     cfg = train_on_gso_and_shapenet(
+    #         cfg, shapenet_obj_ds_name="shapenet_10mb_20k", gso_obj_ds_name=None
+    #     )
+    # elif config_id == "refiner-gso_shapenet_nomodelnet-4views-normals":
+    #     cfg = make_refiner_cfg(cfg)
+    #     cfg = train_on_gso_and_shapenet(
+    #         cfg,
+    #         shapenet_obj_ds_name="shapenet_10mb_20k",
+    #         gso_obj_ds_name=None,
+    #         remove_modelnet=True,
+    #     )
+
+    # elif config_id == "refiner-all_bop-4views-normals":
+    #     cfg = make_refiner_cfg(cfg)
+    #     cfg = train_on_bop_pbr_datasets(cfg, use_webdataset=False)
+
+    # elif config_id == "refiner-all_bop-4views-normals-depth":
+    #     cfg = make_refiner_cfg(cfg)
+    #     cfg = train_on_bop_pbr_datasets(cfg, use_webdataset=False)
+    #     cfg = enable_depth_in_cfg(cfg)
+
+    # # Modelnet config
+    # elif config_id == "refiner-gso_shapenet_nomodelnet-4views-normals":
+    #     cfg = make_refiner_cfg(cfg)
+    #     cfg = train_on_gso_and_shapenet(cfg)
+    # elif config_id == "refiner-gso_shapenet_nomodelnet-4views-normals-depth":
+    #     cfg = make_refiner_cfg(cfg)
+    #     cfg = train_on_gso_and_shapenet(cfg, remove_modelnet=True)
+    #     cfg = enable_depth_in_cfg(cfg)
+
+    # # Coarse
+    # elif config_id == "coarse-gso_shapenet-6hypothesis":
+    #     cfg = make_coarse_cfg(cfg)
+    #     cfg = train_on_gso_and_shapenet(cfg)
+    # elif config_id == "coarse-gso-6hypothesis":
+    #     cfg = make_coarse_cfg(cfg)
+    #     cfg = train_on_gso_and_shapenet(cfg, shapenet_obj_ds_name=None, gso_obj_ds_name="gso_940")
 
     else:
         raise ValueError("Unknown config")
@@ -246,7 +251,6 @@ def update_cfg_debug(cfg: TrainingConfig) -> TrainingConfig:
     cfg.epoch_size = 5 * cfg.batch_size * cfg.hardware.n_gpus
     cfg.run_id = "debug-" + cfg.run_id
     cfg.add_iteration_epoch_interval = 2
-    cfg.train_datasets = cfg.train_datasets
     cfg.n_max_objects = 500
     cfg.sample_buffer_size = 1
     return cfg
@@ -255,6 +259,7 @@ def update_cfg_debug(cfg: TrainingConfig) -> TrainingConfig:
 def update_cfg_overfit(cfg: TrainingConfig) -> TrainingConfig:
     cfg.background_augmentation = False
     cfg.rgb_augmentation = False
+    cfg.depth_augmentation = False
     cfg.n_epochs_warmup = 1
     cfg.epoch_size = 10 * cfg.batch_size
     cfg.val_size = 10 * cfg.batch_size
